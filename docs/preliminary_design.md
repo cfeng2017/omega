@@ -10,7 +10,7 @@ Omega Preliminary Design
 
 ### 背景
 
-目前老系统对Mysql监控图表的显示异常，对Nosql监控缺乏，对slow，dbrt等系统有需求，急需一套管理系统，所以本系统提上日程。目前系统名叫Omega，对于以后分布在各监控对象上的Agent，可命名为 Alfa。
+目前老系统对Mysql监控图表的显示异常，对Nosql监控缺乏，对slow，dbrt等系统有需求，急需一套管理系统，所以本系统提上日程。目前系统名叫Omega，对于以后分布在各监控对象上的Agent，可命名为 Alpha。
 
 总体设计
 ---
@@ -29,7 +29,7 @@ Omega Preliminary Design
  - Host
  - Instance
 - 每种级别都可以被订阅及接警
-- 对于所有监控内容，使用同一套逻辑。如Mysql和Redis监控，不需要多次编程
+- 能满足自定义监控
 
 #### 报警
 
@@ -55,12 +55,22 @@ Omega Preliminary Design
 
 - SSH KEY
 
+#### 日志
+分为两种日志，系统本身运行的日志和用户操作日志。
+
 ### 运行环境
 
 全系统使用的软件及版本如下：
 
 - Python2.7
 - Django==1.6.5
+- Flask-0.10.1 
+- Jinja2-2.8 
+- MarkupSafe-0.23 
+- Werkzeug-0.10.4 
+- itsdangerous-0.24
+- Flask-SQLAlchemy-2.0
+
 
 ### 基本设计概念和处理流程
 总体结构图如下：
@@ -73,7 +83,6 @@ Omega Preliminary Design
 - DBRT
 - Report
 - Job
-- CMC(配置管理中心)
 
 先说下通用模块。
 
@@ -100,59 +109,97 @@ Omega Preliminary Design
 
 包括目前Mysql的各种分组，Redis集群中分组，Memcached分组，Hadoop群集的分组等
 
-
-all_dbs
-
+- 组类型表
+组类型比较复杂，除了Mysql，Redis等分组外，对于自定义分组也是兼容的，如添加某部门的业务监控，在类型表中新增“业务”项，然后在`group`加部门即可。
+该表数据最好同时在redis做存储以提高查询速度。
 ```
-CREATE TABLE dbs {
+CREATE TABLE all_types {
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    type VARCHAR(30) NOT NULL DEFAULT '' COMMENT '类型名',
+    primary key(id)
+}ENGINE=INNODB DEFAULT CHARSET=utf8;
+```
+
+- 数据库表   
+存取信息是各db所对应的gid。
+```
+CREATE TABLE all_dbs {
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     gid INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '组id',
     db VARCHAR NOT NULL DEFAULT '' COMMENT 'db名',
     primary key(id)
 }ENGINE=INNODB DEFAULT CHARSET=utf8;
 ```
+该表用来根据数据库名查询其所在的机器。其查询语句为`select gid from all_dbs where db='$DB_NAME'`。
 
-Group，同时还包括自定义的分组。其字段如下：
+- Group
+存储各组，包括自定义的分组。其字段如下：
 
 ```
 CREATE TABLE groups (
 id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
 name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '组名',
-type TINYINT NOT NULL DEFAULT 0 COMMENT '组类型，未指定:0,', 
+type TINYINT NOT NULL DEFAULT 0 COMMENT '表all_types的id',
 description VARCHAR(100) NOT NULL DEFAULT '' COMMENT '描述业务', 
 scenario VARCHART(500) NOT NULL DEFAULT '' COMMENT '使用场景',
 contacts VARCHAR(100) NOT NULL DEFAULT '' COMMENT '联系人', 
-updatetime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAM 
+updatetime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+index idx_type(type)
 ) ENGINE=INNODB DEFAULT CHARSET=UTF8;
 ```
 
-查找某db所属组：
-`SELECT id, name from groups where type=? and dbs like %?%;`
+查询语句如下：
+`SELECT id, name from groups where type='$TYPE';`
 
-Host表如下：
+- Host
+Host表主要存储机器物理方面的性质，其表结构如下：
 
 ```
 CREATE TABLE hosts (
 id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 host VARCHAR(32) NOT NULL DEFAULT '' COMMENT '主机名',
 cores INT NOT NULL DEFAULT 0 COMMENT 'cpu核数',
-memory varchar(30) NOT NULL DEFAULT 0 COMMENT '内存大小'
-disk_num VARCHAR(50) NOT NULL DEFAULT '' COMMENT '磁盘数,若多种类型磁盘，以空格做分隔',
-disk_size VARCHAR(50) NOT NULL DEFAULT '' COMMENT '总磁盘大小，多种类型磁盘，以空格做分隔'
+memory VARCHAR(30) NOT NULL DEFAULT 0 COMMENT '内存大小'
 disk_type VARCHAR(50) NOT NULL DEFAULT '' COMEMNT '磁盘类型', 
-raid VARCHAR(50) NOT NULL DEFAULT '' COMMENT '',
+disk_num VARCHAR(50) NOT NULL DEFAULT '' COMMENT '磁盘数,若多种类型磁盘，以空格做分隔',
+disk_size VARCHAR(50) NOT NULL DEFAULT '' COMMENT '每种类型磁盘总大小，多种类型磁盘，以空格做分隔',
+raid  SMALLINT NOT NULL DEFAULT 0 COMMENT '主要磁盘的raid级别，不包括系统盘',
 ips VARCHAR(256) NOT NULL DEFAULT '' COMMENT '多个ip使用, 做分隔',
-status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '机器状态。offline:0，online:1',
+remote_ip VARCHAR(30) NOT NULL DEFAULT '' COMMENT '远程控制卡IP',
+idc TINYINT NOT NULL DEFAULT 0 COMMENT '机房位置, IDC10: 0, IDC20: 1',
 bbu_relearn_flag TINYINT(1) NOT NULL DEFAULT 0 COMMENT '电池充放电。不手动充放:0，手动充放:1',
 bbu_relearn_date DATE NOT NULL DEFAULT '0000-00-00' COMMENT '下次充放电日期',
+status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '机器状态。offline:0，online:1',
+remark VARCHAR(200) NOT NULL DEFAULT '' COMMENT '机器备注',
 updatetime TIMESTAMP NOT NULL DEFAUTL CURRENT_TIMESTAMP ON UP CURRENT_TIMESTAMP
 )ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT='所有主机相关信息';
 ```
 
+- mysql
 mysql实例表：
 
 ```
-CREATE TABLE instances (
+CREATE TABLE mysql_instances (
+id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+gid INT NOT NULL DEFAULT 0 COMMENT '组id',
+hid INT NOT NULL DEFAULT 0 COMMENT 'host_id',
+port SMALLINT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'port号',
+ips VARCHAR(256) NOT NULL DEFAULT '' COMMENT 'port对应的ip',
+version VARCHAR(10) NOT NULL DEFAULT '' COMMENT '版本',
+socket VARCHAR(64) NOT NULL DEFAULT '' COMMENT 'socket pid',
+role TINYINT(1) NOT NULL DEFAULT 0 COMMENT '角色。master: 1, slave: 2, backup: 3',
+status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '状态。online: 1, offline: 2',
+remark VARCHAR(200) NOT NULL DEFAULT '' COMMENT '备注',
+updatetime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+KEY idx_id(gid, hid)
+)ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT='所有的实例表';
+```
+
+- redis
+redis实例表：
+
+```shell
+CREATE TABLE redis_instances (
 id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 gid INT NOT NULL DEFAULT 0 COMMENT '组id',
 hid INT NOT NULL DEFAULT 0 COMMENT 'host_id',
@@ -160,46 +207,62 @@ port SMALLINT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'port号',
 ips VARCHAR(256) NOT NULL DEFAULT '' COMMENT 'port对应的ip',
 memory VARCHAR(20) NOT NULL DEFAULT '' COMMENT '分配内存',
 version VARCHAR(10) NOT NULL DEFAULT '' COMMENT '版本',
-socket VARCHAR(64) NOT NULL DEFAULT '' COMMENT 'socket pid',
-parameters VARCHAR(100) NOT NULL DEFAULT '' COMMENT '命令启动的其他参数',
 persistence TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否持久化，针对redis。否：0，是：1',
-role TINYINT(1) NOT NULL DEFAULT 0 COMMENT '角色。master/namenode:1, secondnamenode/backup_master:2, slave/datanode:3',
-status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '状态。offline|error:0, online|ok:1, etl&backup: 2',
+role TINYINT(1) NOT NULL DEFAULT 0 COMMENT '角色。master:1, slave:2, sentinel:3',
+status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '状态。online: 1, offline: 2',
+remark VARCHAR(200) NOT NULL DEFAULT '' COMMENT '备注',
 updatetime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 KEY idx_id(gid, hid)
 )ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT='所有的实例表';
 ```
 
+- memcached
+memcached实例表：
 
-redis实例表：
-
-memcached
-
-因为关注较多的是某个group下实例情况，较少关注group下的host情况，所以这里将gid也放在`instance`表中，
+```
+CREATE TABLE memcached_instances (
+id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+gid INT NOT NULL DEFAULT 0 COMMENT '组id',
+hid INT NOT NULL DEFAULT 0 COMMENT 'host_id',
+port SMALLINT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'port号',
+ips VARCHAR(256) NOT NULL DEFAULT '' COMMENT 'port对应的ip',
+memory VARCHAR(20) NOT NULL DEFAULT '' COMMENT '分配内存',
+version VARCHAR(10) NOT NULL DEFAULT '' COMMENT '版本',
+parameters VARCHAR(100) NOT NULL DEFAULT '' COMMENT '命令启动的其他参数',
+status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '状态。online: 1, offline: 2',
+remark VARCHAR(200) NOT NULL DEFAULT '' COMMENT '备注',
+updatetime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+KEY idx_id(gid, hid)
+)ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT='所有的实例表';
+```
 
 显示所有实例时，根据`groups`中的结果来查找所有实例，查询语句如下：
-`SELECT * from instances where gid=$groups.id`。
+`SELECT * from instances where gid=$GROUP.id`。
 
-图表monitor_charts表：
+- 监控表
+图表monitor_charts分为三个层次的报警，分别是组，主机，实例，其表结构如下：
 
 ```
 CREATE TABLE monitor_charts (
 id INT NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '图表ID',
 chart_name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '图表名称',
 gid INT NOT NULL DEFAULT 0 COMMENT 'group id',
-hid INT NOT NULL DEFAULT 0 COMMENT 'host id',
-instance_id INT NOT NULL DEFAULT 0 COMMENT 'instance表id',
+sid INT NOT NULL DEFAULT 0 COMMENT '二级id，类似host id，业务id等',
+tid INT NOT NULL DEFAULT 0 COMMENT '三级id，类似各instance表id',
 contacts VARCHAR(200) NOT NULL DEFAULT '' COMMENT '联系人or接警人邮箱，以 , 做分隔',
 alarm_status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否开启报警。开启：1，关闭：0',
 interval INT NOT NULL DEFAULT 1 COMMENT '报警间隔，单位为分',
 last INT NOT NULL DEFAULT 0 COMMENT '延时报警，单位为分',
 mode TINYINT NOT NULL DEFAULT 0 COMMENT '接警方式，邮件：0，短信：1，微信：2',
 threshold VARCAHR(200) NOT NULL DEFAULT '' COMMENT '报警阈值，差值的百分比：1，差值的绝对值：2，极值：3，斜率：4，以json保存',
-key idx_id(gid, hid, instance_id)
+key idx_id(gid, hid, tid)
 )ENGINE=INNODB DEFAULT CHARSET=utf8 COMMENT '监控图表信息'
 ```
 
-数据源monitor_ds表：
+对于上述表结构，`gid`和`tid`联合保证了该行的唯一性，即使mysql和nosql的id相同，但其gid一定不同，因此记录不会是重复的。
+
+- 数据源表
+数据源monitor_ds表结构如下：
 
 ```
 CREATE TABLE monitor_ds (
@@ -209,7 +272,8 @@ chart_id INT NOT NULL DEFAULT 0 COMMENT 'chart id',
 )ENGINE=INNODB DEFAULT CHARSET=utf8 COMMENT '监控数据源的信息表';
 ```
 
-数据源monitor_ds_YYYYmmdd表：
+- 每日数据源表
+monitor_ds_YYYYmmdd表结构如下：
 
 ```
 CREATE TABLE monitor_ds_YYYYmmdd (
@@ -218,12 +282,87 @@ ds_id INT NOT NULL DEFAULT 0 COMMENT '图表中数据源ID',
 value INT NOT NULL DEFAULT 0 COMMENT '数据值',
 updatetime timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 INDEX idx_1(ds_id, updatetime)
-)ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT '监控数据源的值';
+)ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT '监控数据源天表';
 ```
 插入语句：  
 - `INSERT INTO monitor_ds_YYYYMMDD (ds_id, value, updatetime) VALUES(1000100, 30, '2009-12-12 12:12:00');`
 查询语句：  
 - `SELECT value FROM monitor_ds_YYYYMMDD where chart_id=1000 and ds_id=1000100 and updatetime>='2009-12-12 12:00:00' and updatetime<='2009-12-12 13:00:00';`
+
+一般而言，对最近1天，最近3天，最近1周，最近1个月，最近1年的查询是较多的，若都是天表，当查询天数越来越多时，需要查询的表也起来越多，响应时间会越来越长。因此对1周，
+1个月，1年的情况，还需要单独建表，以提高查询速度，避免浏览器卡死。
+
+- 周数据源表
+对天表每隔5分钟偏量提取平均值放入周表中。
+```
+CREATE TABLE monitor_ds_YYYY_week (
+id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ds_id INT NOT NULL DEFAULT 0 COMMENT '图表中数据源ID',
+value INT NOT NULL DEFAULT 0 COMMENT '数据值',
+updatetime timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+INDEX idx_1(ds_id, updatetime)
+)ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT '监控数据源周表';
+```
+
+- 每月数据源表
+对天表每隔30分钟偏量提取平均值放入月表中。
+monitor_ds_YYYYmm表结构如下：
+
+```
+CREATE TABLE monitor_ds_YYYYmmdd (
+id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ds_id INT NOT NULL DEFAULT 0 COMMENT '图表中数据源ID',
+value INT NOT NULL DEFAULT 0 COMMENT '数据值',
+updatetime timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+INDEX idx_1(ds_id, updatetime)
+)ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT '监控数据源的月表';
+```
+
+- 年数据源表
+
+对月表每10行提取平均值放入年表中。
+```
+CREATE TABLE monitor_ds_YYYY (
+id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ds_id INT NOT NULL DEFAULT 0 COMMENT '图表中数据源ID',
+value INT NOT NULL DEFAULT 0 COMMENT '数据值',
+updatetime timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+INDEX idx_1(ds_id, updatetime)
+)ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT '监控数据源年表';
+```
+
+- 搜索表
+```
+CREATE TABLE search (
+id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+skey VARCHAR(50) NOT NULL DEFAULT '' COMMENT '搜索字段',
+value VARCHAR(100) NOT NULL DEFAULT '' COMMENT '搜索结果值',
+weight INT NOT NULL DEFAULT 0 COMMENT '搜索权重值',
+updatetime timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+INDEX idx_1(skey)
+)ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT '搜索表';
+```
+
+对于单字段的查询，直接查询`skey`并返回`value`，`value`应能说明`skey`的大概，然后用户选择`value`后再去查询相关表。
+对于多字段的查询，需要将所以查询返回结果求交集。若使用了redis做查询，还需要更新redis。
+返回结果根据`weight`来排序。
+
+##### 对于自定义监控的说明
+
+业务发展到后期，对一些自定义监控的需求也会出现的，如监控某业务的情况，监控app机器，监控交换机等等。本系统提供接口做监控报警展示用，各应用方推送数据即可。下面分别说明。
+
+- 对业务的监控展示
+
+业务监控具体可抽象为`部门-->业务-->业务监控项`，其中`部门`项可添加到`group`表中，业务一项可添加到`host`表，也可再新建一张表，这里为统一起见，选择新建表。 
+`业务监控项`再新建一张新的业务表。
+
+- app机器监控展示
+
+对于现有cmdb，pool对应group，主机信息对应`host`表，其他类推。
+
+- 交换机监控展示
+
+根据机房和机架来分组，各交换机放入host表，在host级别做监控即可。
 
 ### 具体设计
 #### 监控
@@ -258,9 +397,11 @@ ManagementCenter是配置管理中心。
 - 不能满足同时有多个匹配的情况，即使满足多个匹配的情况，但匹配词序固定，对于`condition1 condition2`，只能是`LIKE %condition1%condition2%`，对于`condition2 condition1`的情况无法匹配出来。
 - 无法自适应控制结果的重要顺序。对于所有结果返回的顺序一样，无法自适应调整优先级。
 
-还有一种做法是建立一个搜索表，将需要搜索的字段都放在该表中，能满足多字段的搜索，同时能做到根据结果重要性排序返回。在使用该方法时，不希望使用 `LIKE`的方式，使用在搜索输入框中会用redis/jquery来做自动完成的功能。该方法的缺点是对于少部分情况会出现搜索不到的情况，不过对于这种情况，可以将待搜索字段加入到搜索表中即可。
+还有一种做法是建立一个搜索表，每次增删改时，同时更新搜索表。其方法为将需要搜索的字段都放在该表中，能满足多字段的搜索，同时能做到根据结果重要性排序返回。在使用该方法时，不希望使用 `LIKE`的方式，使用在搜索输入框中会用redis/jquery来做自动完成的功能。该方法的缺点是对于少部分情况会出现搜索不到的情况，不过对于这种情况，可以将待搜索字段加入到搜索表中即可。
 
-当然，还可以开源的一些工具，如 solr, nutch, elasticsearch 等。这里暂时定为使用es。
+当然，还可以开源的一些工具，如 solr, nutch, elasticsearch 等，这些工具对查询级别为千万以上表现良好，但增加了维护成本。
+
+本系统做为内部系统，查询量相较而言不大太，因此这里使用搜索表的方式。
 
 ### 类设计
 #### Message
