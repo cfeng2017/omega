@@ -1,0 +1,45 @@
+{% extends "asset/ibase.html" %}
+{% block subcss %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/jquery.datetimepicker.css') }}">
+{% endblock%}
+
+{% block instance_type %}
+{{ gtype.type }}
+{% endblock %}
+
+{% block form %}
+{% from "formhelpers.html" import render_table_field with context %}
+{% if gtype.type == "MYSQL" %}
+<form action="/asset/i/add_mysql/" class="ui form" id="mform" method="post">
+{% elif gtype.type == "MEMCACHED" %}
+<form action="/asset/i/add_mc/" class="ui form" id="mc_form" method="post">
+{% elif gtype.type == "REDIS" %}
+<form action="/asset/i/add_redis/" class="ui form" id="rform" method="post">
+{% endif %}
+
+    <table>
+        <tbody>
+        {{render_table_field(form.i_base.i_name)}}
+        {{render_table_field(form.i_base.i_version)}}
+        {{render_table_field(form.i_base.i_hostname)}}
+        {{render_table_field(form.i_base.i_ip)}}
+        {{render_table_field(form.i_base.i_port)}}
+        {% if gtype.type == "MEMCACHED" %}
+        {{render_table_field(form.mc_mem)}}
+        {{render_table_field(form.mc_thread)}}
+        {{render_table_field(form.mc_factor)}}
+        {{render_table_field(form.mc_con)}}
+        {{render_table_field(form.mc_user)}}
+        {{render_table_field(form.mc_para)}}
+        {% elif gtype.type == "REDIS" %}
+        {{render_table_field(form.r_mem)}}
+        {{render_table_field(form.r_pre)}}
+        {% endif %}
+        {{render_table_field(form.i_base.i_status)}}
+        {{render_table_field(form.i_base.i_role)}}
+        {{render_table_field(form.i_base.i_remark)}}
+        </tbody>
+    </table>
+    {{form.i_base.i_submit(class_="ui button")}}
+</form>
+{% endblock %}

@@ -1,0 +1,186 @@
+{% extends "asset/abase.html" %}
+
+
+{% block abc %}
+    <a class="section" href="/asset">资产</a>
+    <div class="divider">/</div>
+    <a class="active section" href="/asset/i">实例</a>
+{% endblock %}
+
+{% block maincontent %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <ul class=flashes>
+        {% for category, message in messages %}
+          <li class="{{ category }}">{{ message }}</li>
+        {% endfor %}
+        </ul>
+    {% endif %}
+{% endwith %}
+
+<!--<div class="summary">-->
+    <!--<div class="ui top attached tabular menu">-->
+        <!--{% for g in all_group_type %}-->
+            <!--{% if groups and g.id == groups[0]['type'] %}-->
+                <!--<a class="item active" data-tab="{{g.id}}">{{g.type|upper}}</a>-->
+            <!--{% else %}-->
+                <!--<a class="item" data-tab="{{g.id}}">{{g.type|upper}}</a>-->
+            <!--{% endif %}-->
+        <!--{% endfor %}-->
+    <!--</div>-->
+
+
+    <!--{% for g in all_group_type %}-->
+        <!--{% if groups and g.id == groups[0]['type'] %}-->
+            <!--<div class="ui bottom attached tab segment active" data-tab="{{g.id}}">-->
+        <!--{% else %}-->
+            <!--<div class="ui bottom attached tab segment" data-tab="{{g.id}}">-->
+        <!--{% endif %}-->
+                <!--<div>-->
+                    <!--<a class="ui green button" href="/asset/i/add/?tid={{g.id}}">新建实例</a>-->
+                <!--</div>-->
+                <!--<br/>-->
+                <!--<div>-->
+                    <!--<table class="ui striped table" id="mysql_list">-->
+                        <!--<thead>-->
+                        <!--<tr>-->
+                            <!--<th>组名</th>-->
+                            <!--<th>sf</th>-->
+                            <!--<th>业务联系人</th>-->
+                        <!--</tr>-->
+                        <!--</thead>-->
+                        <!--<tbody>-->
+
+                        <!--</tbody>-->
+                    <!--</table>-->
+                <!--</div>-->
+            <!--</div>-->
+    <!--{% endfor %}-->
+<!--</div>-->
+
+
+<div class="summary">
+    <div class="ui top attached tabular menu">
+        <a class="item active" data-tab="mysql">MySQL</a>
+        <a class="item" data-tab="redis">Redis</a>
+        <a class="item" data-tab="mc">Memcached</a>
+    </div>
+
+    <div class="ui bottom attached tab segment active" data-tab="mysql">
+        <div>
+            <a class="ui green button" href="/asset/i/add_mysql/">新建实例</a>
+        </div>
+        <br/>
+        <div>
+            {% for g in m_groups %}
+            {{ g.gname }}
+            <table class="ui striped table">
+                <thead>
+                <tr>
+                    <th>机器名</th>
+                    <th>IP</th>
+                    <th>端口</th>
+                    <th>版本</th>
+                    <th>role</th>
+                    <th>status</th>
+                    <th>备注</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for i in g.infos %}
+                <tr>
+                    {% for td in i %}
+                        {% if loop.index != 1 and loop.index != 2 %}
+                        <td>{{ td }}</td>
+                        {% endif %}
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="ui bottom attached tab segment" data-tab="redis">
+        <div>
+            <a class="ui green button" href="/asset/i/add_redis/">新建实例</a>
+        </div>
+        <br/>
+        <div>
+
+            {% for g in r_groups %}
+            {{ g.gname }}
+            <table class="ui striped table">
+                <thead>
+                <tr>
+                    <th>机器名</th>
+                    <th>IP</th>
+                    <th>端口</th>
+                    <th>内存</th>
+                    <th>持久化</th>
+                    <th>版本</th>
+                    <th>role</th>
+                    <th>status</th>
+                    <th>备注</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for i in g.infos %}
+                <tr>
+                    {% for td in i %}
+                        {% if loop.index != 1 and loop.index != 2 %}
+                        <td>{{ td }}</td>
+                        {% endif %}
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="ui bottom attached tab segment" data-tab="mc">
+        <div>
+            <a class="ui green button" href="/asset/i/add_mc/">新建实例</a>
+        </div>
+        <br/>
+        <div>
+            {% for g in mc_groups %}
+            {{ g.gname }}
+            <table class="ui striped table">
+                <thead>
+                <tr>
+                    <th>机器名</th>
+                    <th>IP</th>
+                    <th>端口</th>
+                    <th>内存</th>
+                    <th>进程数</th>
+                    <th>最大连接数</th>
+                    <th>增长因子</th>
+                    <th>其他参数</th>
+                    <th>用户</th>
+                    <th>版本</th>
+                    <th>role</th>
+                    <th>status</th>
+                    <th>备注</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for i in g.infos %}
+                <tr>
+                    {% for td in i %}
+                        {% if loop.index != 1 and loop.index != 2 %}
+                        <td>{{ td }}</td>
+                        {% endif %}
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

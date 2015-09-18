@@ -1,0 +1,29 @@
+{% extends "asset/abase.html" %}
+
+{% block abc %}
+    <a class="section" href="/asset/">资产</a>
+    <div class="divider">/</div>
+    <a class="active section" href="/asset/h/">主机</a>
+{% endblock %}
+
+
+{% block maincontent %}
+<div class="summary">
+
+    {% block title %}{% endblock %}
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul class=flashes>
+            {% for category, message in messages %}
+              <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+
+    {% block form %}
+
+    {% endblock %}
+</div>
+{% endblock %}

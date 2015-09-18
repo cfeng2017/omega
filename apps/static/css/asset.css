@@ -1,0 +1,39 @@
+form table tr td{
+    padding: 0.5em;
+}
+
+form table {
+    margin: 1em 0 1em 0.1em;
+}
+
+.host_add_main {
+
+}
+
+.host_add_operation {
+    margin-top: 2em;
+}
+
+.operation_pre {
+    float: left;
+}
+
+.operation_next {
+    float: right;
+}
+
+#haw_type {
+    width: 15em;
+}
+
+.multi_field_wrapper {
+    border: 1px dashed #336699;
+    border-radius: 5px;
+    display: block;
+    margin: 0.5em 0;
+}
+
+.block_wrapper {
+    display: block;
+}
+

@@ -1,0 +1,26 @@
+{% extends "asset/gbase.html" %}
+
+{% block title %}
+新建组类型
+{% endblock %}
+
+{% block form %}
+    {% from "formhelpers.html" import render_table_field with context %}
+<form action="/asset/gtype/add/" class="ui form" id="gtform" method="post">
+    <table>
+        <tbody>
+            {{render_table_field(form.gt_gtname)}}
+            <tr>
+                <td><label for="g_current">当前已有组类型: </label></td>
+                <td id="all_types">
+                    {% for eg in egs %}
+                    {{eg.type}};&nbsp;&nbsp;
+                    {% endfor %}
+
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    {{form.gt_submit(class_="ui button")}}
+</form>
+{% endblock %}

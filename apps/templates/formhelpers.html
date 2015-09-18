@@ -1,0 +1,42 @@
+{% macro render_radio_field(field) %}
+
+{% endmacro %}
+
+{% macro render_table_field(field) %}
+<tr>
+    {% if field.type == "RadioField" %}
+        <td>{{ field.label }}:</td>
+        <td>
+            <div class="inline fields">
+                {% for value, label, default in field.iter_choices() %}
+                <div class="field">
+                  <div class="ui radio checkbox">
+                      {% if default == True %}
+                        <input type="radio" name="{{field.id}}" value="{{value}}" checked="checked">
+                      {% else %}
+                        <input type="radio" name="{{field.id}}" value="{{value}}" >
+                      {% endif %}
+                      <label>{{label}}</label>
+                  </div>
+                </div>
+                {% endfor %}
+            </div>
+        </td>
+    {% elif field.type == "DateTimeField" %}
+        <td>{{ field.label }}:</td>
+        <td>{{field}}</td>
+    {% else %}
+        <td>{{ field.label }}:</td>
+        <td>{{ field(**kwargs)|safe }}</td>
+    {% endif %}
+</tr>
+
+  {% if field.errors %}
+    <ul class=errors>
+    {% for error in field.errors %}
+      <li> {{field.label}} : {{ error }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+{% endmacro %}
+

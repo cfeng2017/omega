@@ -70,6 +70,9 @@ Omega Preliminary Design
 - Werkzeug-0.10.4 
 - itsdangerous-0.24
 - Flask-SQLAlchemy-2.0
+- WTForms-2.0.2(flask-wtf-0.12)
+- requests-2.7.0
+- flask-login-0.2.11
 
 
 ### 基本设计概念和处理流程
@@ -109,30 +112,34 @@ Omega Preliminary Design
 
 包括目前Mysql的各种分组，Redis集群中分组，Memcached分组，Hadoop群集的分组等
 
-- 组类型表
+- 组类型表    
+
 组类型比较复杂，除了Mysql，Redis等分组外，对于自定义分组也是兼容的，如添加某部门的业务监控，在类型表中新增“业务”项，然后在`group`加部门即可。
 该表数据最好同时在redis做存储以提高查询速度。
-```
-CREATE TABLE all_types {
+```shell
+CREATE TABLE group_types {
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     type VARCHAR(30) NOT NULL DEFAULT '' COMMENT '类型名',
     primary key(id)
 }ENGINE=INNODB DEFAULT CHARSET=utf8;
 ```
 
-- 数据库表   
+- 数据库表    
 存取信息是各db所对应的gid。
-```
-CREATE TABLE all_dbs {
+```shell
+CREATE TABLE group_dbs {
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     gid INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '组id',
-    db VARCHAR NOT NULL DEFAULT '' COMMENT 'db名',
-    primary key(id)
+    db VARCHAR(30) NOT NULL DEFAULT '' COMMENT 'db名',
+    primary key(id),
+    key idx_gid(gid),
+    key idx_db(db)
 }ENGINE=INNODB DEFAULT CHARSET=utf8;
 ```
-该表用来根据数据库名查询其所在的机器。其查询语句为`select gid from all_dbs where db='$DB_NAME'`。
+该表用来根据数据库名查询其所在的机器和查询机器的所有db。其查询语句为`select gid from group_dbs where db='$DB_NAME'`。
 
-- Group
+- Group   
+
 存储各组，包括自定义的分组。其字段如下：
 
 ```
@@ -142,7 +149,7 @@ name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '组名',
 type TINYINT NOT NULL DEFAULT 0 COMMENT '表all_types的id',
 description VARCHAR(100) NOT NULL DEFAULT '' COMMENT '描述业务', 
 scenario VARCHART(500) NOT NULL DEFAULT '' COMMENT '使用场景',
-contacts VARCHAR(100) NOT NULL DEFAULT '' COMMENT '联系人', 
+contacts VARCHAR(100) NOT NULL DEFAULT '' COMMENT '联系人id，多个联系人，以空格做分隔', 
 updatetime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 index idx_type(type)
 ) ENGINE=INNODB DEFAULT CHARSET=UTF8;
@@ -151,7 +158,7 @@ index idx_type(type)
 查询语句如下：
 `SELECT id, name from groups where type='$TYPE';`
 
-- Host
+- Host    
 Host表主要存储机器物理方面的性质，其表结构如下：
 
 ```
@@ -159,23 +166,29 @@ CREATE TABLE hosts (
 id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 host VARCHAR(32) NOT NULL DEFAULT '' COMMENT '主机名',
 cores INT NOT NULL DEFAULT 0 COMMENT 'cpu核数',
-memory VARCHAR(30) NOT NULL DEFAULT 0 COMMENT '内存大小'
-disk_type VARCHAR(50) NOT NULL DEFAULT '' COMEMNT '磁盘类型', 
-disk_num VARCHAR(50) NOT NULL DEFAULT '' COMMENT '磁盘数,若多种类型磁盘，以空格做分隔',
-disk_size VARCHAR(50) NOT NULL DEFAULT '' COMMENT '每种类型磁盘总大小，多种类型磁盘，以空格做分隔',
+memory INT NOT NULL DEFAULT 0 COMMENT '内存大小，以G为单位'
+disk VARCHAR(200) NOT NULL DEFAULT 0 COMEMNT '磁盘信息，Json字符串, 内容为(磁盘类型，磁盘个数，磁盘大小(以G为单位))形式', 
 raid  SMALLINT NOT NULL DEFAULT 0 COMMENT '主要磁盘的raid级别，不包括系统盘',
-ips VARCHAR(256) NOT NULL DEFAULT '' COMMENT '多个ip使用, 做分隔',
-remote_ip VARCHAR(30) NOT NULL DEFAULT '' COMMENT '远程控制卡IP',
+eth VARCHAR(10) NOT NULL DEFAULT '' COMMENT '主要网卡设备名，如eth0, em0等',
+ip VARCHAR(192) NOT NULL DEFAULT '' COMMENT '主ip',
+oips VARCHAR(192) NOT NULL DEFAULT '' COMMENT '其他网卡信息，包括虚拟ip。json字符串，内容为(设备名，ip)形式',
+remote_ip VARCHAR(32) NOT NULL DEFAULT '' COMMENT '远程控制卡IP',
 idc TINYINT NOT NULL DEFAULT 0 COMMENT '机房位置, IDC10: 0, IDC20: 1',
+rack VARCHAR(20) NOT NULL DEFAULT '' COMMENT '机架位置',
 bbu_relearn_flag TINYINT(1) NOT NULL DEFAULT 0 COMMENT '电池充放电。不手动充放:0，手动充放:1',
-bbu_relearn_date DATE NOT NULL DEFAULT '0000-00-00' COMMENT '下次充放电日期',
+bbu_relearn_date TIMESTAMP NOT NULL DEFAULT '0000-00-00' COMMENT '下次充放电日期',
 status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '机器状态。offline:0，online:1',
 remark VARCHAR(200) NOT NULL DEFAULT '' COMMENT '机器备注',
-updatetime TIMESTAMP NOT NULL DEFAUTL CURRENT_TIMESTAMP ON UP CURRENT_TIMESTAMP
+updatetime TIMESTAMP NOT NULL DEFAUTL CURRENT_TIMESTAMP ON UP CURRENT_TIMESTAMP,
+index idx_host host,
 )ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT='所有主机相关信息';
 ```
 
+对于`disk_num`和`disk_size`的设计思路来源于部分机器可能有2块300G的磁盘做系统盘，有2块2T的磁盘做数据盘，此时`disk_num`存储字段为`2 6`，
+`disk_size`则存储`600 40960`。
+
 - mysql
+
 mysql实例表：
 
 ```
@@ -184,18 +197,20 @@ id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 gid INT NOT NULL DEFAULT 0 COMMENT '组id',
 hid INT NOT NULL DEFAULT 0 COMMENT 'host_id',
 port SMALLINT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'port号',
-ips VARCHAR(256) NOT NULL DEFAULT '' COMMENT 'port对应的ip',
+ip VARCHAR(256) NOT NULL DEFAULT '' COMMENT 'port对应的ip',
 version VARCHAR(10) NOT NULL DEFAULT '' COMMENT '版本',
-socket VARCHAR(64) NOT NULL DEFAULT '' COMMENT 'socket pid',
-role TINYINT(1) NOT NULL DEFAULT 0 COMMENT '角色。master: 1, slave: 2, backup: 3',
+role TINYINT(1) NOT NULL DEFAULT 0 COMMENT '角色。master: 1, slave: 2',
 status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '状态。online: 1, offline: 2',
-remark VARCHAR(200) NOT NULL DEFAULT '' COMMENT '备注',
+remark VARCHAR(200) NOT NULL DEFAULT '' COMMENT '备注, 如用做backup或etl等',
 updatetime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 KEY idx_id(gid, hid)
 )ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT='所有的实例表';
 ```
 
-- redis
+IP不写的话，默认使用host的ip。
+
+- redis    
+
 redis实例表：
 
 ```shell
@@ -204,7 +219,7 @@ id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 gid INT NOT NULL DEFAULT 0 COMMENT '组id',
 hid INT NOT NULL DEFAULT 0 COMMENT 'host_id',
 port SMALLINT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'port号',
-ips VARCHAR(256) NOT NULL DEFAULT '' COMMENT 'port对应的ip',
+ip VARCHAR(256) NOT NULL DEFAULT '' COMMENT 'port对应的ip',
 memory VARCHAR(20) NOT NULL DEFAULT '' COMMENT '分配内存',
 version VARCHAR(10) NOT NULL DEFAULT '' COMMENT '版本',
 persistence TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否持久化，针对redis。否：0，是：1',
@@ -216,19 +231,23 @@ KEY idx_id(gid, hid)
 )ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT='所有的实例表';
 ```
 
-- memcached
+- memcached    
+
 memcached实例表：
 
-```
+```mysql
 CREATE TABLE memcached_instances (
 id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 gid INT NOT NULL DEFAULT 0 COMMENT '组id',
 hid INT NOT NULL DEFAULT 0 COMMENT 'host_id',
 port SMALLINT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'port号',
-ips VARCHAR(256) NOT NULL DEFAULT '' COMMENT 'port对应的ip',
+ip VARCHAR(256) NOT NULL DEFAULT '' COMMENT 'port对应的ip',
 memory VARCHAR(20) NOT NULL DEFAULT '' COMMENT '分配内存',
 version VARCHAR(10) NOT NULL DEFAULT '' COMMENT '版本',
-parameters VARCHAR(100) NOT NULL DEFAULT '' COMMENT '命令启动的其他参数',
+thread INT NOT NULL DEFAULT 0 COMMENT '进程数',
+maxconn INT NOT NULL DEFAULT 0 COMMENT '最大连接数',
+user VARCHAR(20) NOT NULL DEFAULT 'memcached' COMMENT '运行用户名',
+parameters VARCHAR(100) NOT NULL DEFAULT '' COMMENT '命令启动的其他参数, 如-o slab_automove 等',
 status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '状态。online: 1, offline: 2',
 remark VARCHAR(200) NOT NULL DEFAULT '' COMMENT '备注',
 updatetime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -236,13 +255,14 @@ KEY idx_id(gid, hid)
 )ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT='所有的实例表';
 ```
 
-显示所有实例时，根据`groups`中的结果来查找所有实例，查询语句如下：
+显示所有实例时，根据`groups`中的结果来查找所有实例，查询语句如下：    
 `SELECT * from instances where gid=$GROUP.id`。
 
 - 监控表
+
 图表monitor_charts分为三个层次的报警，分别是组，主机，实例，其表结构如下：
 
-```
+```mysql
 CREATE TABLE monitor_charts (
 id INT NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '图表ID',
 chart_name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '图表名称',
@@ -259,12 +279,13 @@ key idx_id(gid, hid, tid)
 )ENGINE=INNODB DEFAULT CHARSET=utf8 COMMENT '监控图表信息'
 ```
 
-对于上述表结构，`gid`和`tid`联合保证了该行的唯一性，即使mysql和nosql的id相同，但其gid一定不同，因此记录不会是重复的。
+对于上述表结构，`gid`和`tid`联合保证了该行的唯一性，即使mysql和nosql的id相同，但其gid一定不同，因此记录不会是重复的。是否还需要oip？
 
 - 数据源表
+
 数据源monitor_ds表结构如下：
 
-```
+```mysql
 CREATE TABLE monitor_ds (
 id  INT NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '数据源ID',
 name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '数据源名称',
@@ -272,14 +293,16 @@ chart_id INT NOT NULL DEFAULT 0 COMMENT 'chart id',
 )ENGINE=INNODB DEFAULT CHARSET=utf8 COMMENT '监控数据源的信息表';
 ```
 
-- 每日数据源表
+- 每日数据源表     
+
 monitor_ds_YYYYmmdd表结构如下：
 
-```
+```mysql
 CREATE TABLE monitor_ds_YYYYmmdd (
 id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 ds_id INT NOT NULL DEFAULT 0 COMMENT '图表中数据源ID',
 value INT NOT NULL DEFAULT 0 COMMENT '数据值',
+info VARCHAR(500) NOT NULLL DEFAULT '' COMMENT '详细信息',
 updatetime timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 INDEX idx_1(ds_id, updatetime)
 )ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT '监控数据源天表';
@@ -289,23 +312,26 @@ INDEX idx_1(ds_id, updatetime)
 查询语句：  
 - `SELECT value FROM monitor_ds_YYYYMMDD where chart_id=1000 and ds_id=1000100 and updatetime>='2009-12-12 12:00:00' and updatetime<='2009-12-12 13:00:00';`
 
-一般而言，对最近1天，最近3天，最近1周，最近1个月，最近1年的查询是较多的，若都是天表，当查询天数越来越多时，需要查询的表也起来越多，响应时间会越来越长。因此对1周，
-1个月，1年的情况，还需要单独建表，以提高查询速度，避免浏览器卡死。
+一般而言，对最近1天，最近3天，最近1周，最近1个月，最近1年的查询是较多的，若都是天表，当查询天数越来越多时，需要查询的表也起来越多，响应时间会越来越长。因此对1周，1个月，1年的情况，还需要单独建表，以提高查询速度，避免浏览器卡死。
 
-- 周数据源表
+- 周数据源表     
+
 对天表每隔5分钟偏量提取平均值放入周表中。
 ```
 CREATE TABLE monitor_ds_YYYY_week (
 id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 ds_id INT NOT NULL DEFAULT 0 COMMENT '图表中数据源ID',
 value INT NOT NULL DEFAULT 0 COMMENT '数据值',
+info VARCHAR(500) NOT NULLL DEFAULT '' COMMENT '详细信息',
 updatetime timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 INDEX idx_1(ds_id, updatetime)
 )ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT '监控数据源周表';
 ```
 
-- 每月数据源表
-对天表每隔30分钟偏量提取平均值放入月表中。
+- 每月数据源表  
+
+对天表每隔30分钟偏量提取平均值放入月表中。    
+
 monitor_ds_YYYYmm表结构如下：
 
 ```
@@ -313,6 +339,7 @@ CREATE TABLE monitor_ds_YYYYmmdd (
 id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 ds_id INT NOT NULL DEFAULT 0 COMMENT '图表中数据源ID',
 value INT NOT NULL DEFAULT 0 COMMENT '数据值',
+info VARCHAR(500) NOT NULLL DEFAULT '' COMMENT '详细信息',
 updatetime timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 INDEX idx_1(ds_id, updatetime)
 )ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT '监控数据源的月表';
@@ -326,6 +353,7 @@ CREATE TABLE monitor_ds_YYYY (
 id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 ds_id INT NOT NULL DEFAULT 0 COMMENT '图表中数据源ID',
 value INT NOT NULL DEFAULT 0 COMMENT '数据值',
+info VARCHAR(500) NOT NULLL DEFAULT '' COMMENT '详细信息',
 updatetime timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 INDEX idx_1(ds_id, updatetime)
 )ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT '监控数据源年表';
@@ -339,7 +367,7 @@ skey VARCHAR(50) NOT NULL DEFAULT '' COMMENT '搜索字段',
 value VARCHAR(100) NOT NULL DEFAULT '' COMMENT '搜索结果值',
 weight INT NOT NULL DEFAULT 0 COMMENT '搜索权重值',
 updatetime timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-INDEX idx_1(skey)
+INDEX idx_skey (skey)
 )ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT '搜索表';
 ```
 
@@ -349,12 +377,16 @@ INDEX idx_1(skey)
 
 ##### 对于自定义监控的说明
 
-业务发展到后期，对一些自定义监控的需求也会出现的，如监控某业务的情况，监控app机器，监控交换机等等。本系统提供接口做监控报警展示用，各应用方推送数据即可。下面分别说明。
+### 具体设计
+#### 监控
+
+目前监控要展示的图表除了mysql，nosql一些信息外，还需要展示自定义的监控信息，**在监控图，最好能展示具体细节信息**。
+自定义的监控数据可以重新建数据源表和监控表，表名以`_ext`结尾。本系统提供接口做监控报警展示用，各应用方推送数据即可。下面分别说明。
 
 - 对业务的监控展示
 
-业务监控具体可抽象为`部门-->业务-->业务监控项`，其中`部门`项可添加到`group`表中，业务一项可添加到`host`表，也可再新建一张表，这里为统一起见，选择新建表。 
-`业务监控项`再新建一张新的业务表。
+业务监控具体可抽象为`部门-->业务-->业务监控项`，其中`部门`项可添加到`group`表中，业务一项可添加到`host`表，也可再新建一张表，
+这里为统一起见，选择新建表。 
 
 - app机器监控展示
 
@@ -364,15 +396,26 @@ INDEX idx_1(skey)
 
 根据机房和机架来分组，各交换机放入host表，在host级别做监控即可。
 
-### 具体设计
-#### 监控
-
-目前监控要展示的图表除了mysql，nosql一些信息外，还需要展示自定义的监控信息。mysql，nosql的组，主机，port好理解，这里说下自定义监控的实现。
-
-自定义监控中不包含M/S这种关系，也不包括除展示字段外的其他信息，其纯粹是数据的展示而已。基本设计思路是有N个基项，如网络，PV等，当需要监控这些基项的数据时，需要创建子项，若子项直接是图表，则创建图表，否则仍可创建子项，直至最后为图表为止。如下：
+- 多层次监控展示  
+若业务监控信息不能抽象为`部门-->业务-->业务监控项`，则按如下思路来实现：创建子项，若子项直接是图表，则创建图表，否则仍可创建子项，
+直至最后为图表为止。如下：
 
 ![self_monitor](images/self_monitor.png)
 
+#### 模板
+对于很多项目而言，如监控同一类型服务，同一组Mysql业务的slowlog等，一项一项增删改很不方便，本系统将使用模板的形式，对同一类型的实例
+批量统一管理，在每次新建组/主机/实例后，需选择或修改或新建相关模板，关联模板后才能完成新建流程。
+
+##### 模板定义
+不同于机器以组分类来定义实例集合，模板定义的是这些实体集合的配置，如报警阈值、启动参数等。后续相关的报警，初始化机器等均采用模板方式完成。
+同一模板对实例集合并发的执行操作。
+
+##### 模板属性说明
+
+- 默认模板包括一些初始化项
+- 模板可拷贝，拷贝的新模板可增删项目
+- 除默认模板外，模板可新建
+- 多个模板可一起定义某个实例集合
 
 #### ManagementCenter
 ManagementCenter是配置管理中心。

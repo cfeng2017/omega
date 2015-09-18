@@ -1,0 +1,19 @@
+{% extends "asset/gbase.html" %}
+
+{% block title %}
+新建组db
+{% endblock %}
+
+{% block form %}
+{% from "formhelpers.html" import render_table_field with context %}
+<form action="/asset/gdb/add/" class="ui form" id="gtform" method="post">
+    <table>
+        <tbody>
+        {{render_table_field(form.gdb_gname.gtype.gtype)}}
+        {{render_table_field(form.gdb_gname.gname)}}
+        {{render_table_field(form.gdb_db)}}
+        </tbody>
+    </table>
+    {{form.gdb_submit(class_="ui button")}}
+</form>
+{% endblock %}

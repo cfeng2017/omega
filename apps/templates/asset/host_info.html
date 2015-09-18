@@ -1,0 +1,52 @@
+{% extends "asset/abase.html" %}
+
+{% block abc %}
+    <a class="section" href="/asset/">资产</a>
+    <div class="divider">/</div>
+    <a class="active section" href="/asset/h/">主机</a>
+{% endblock %}
+
+{% block maincontent %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <ul class=flashes>
+        {% for category, message in messages %}
+          <li class="{{ category }}">{{ message }}</li>
+        {% endfor %}
+        </ul>
+    {% endif %}
+{% endwith %}
+
+<div class="summary">
+    <div class="ui top attached tabular menu">
+      <a class="item active" data-tab="host">主机</a>
+      <a class="item" data-tab="template">模板</a>
+    </div>
+    <div class="ui bottom attached tab segment active" data-tab="host">
+        <div>
+            <a class="ui green button" href="/asset/h/add/">新建主机</a>
+            <a class="ui green button" href="/asset/h/add_host_wizard/welcome/">安装机器</a>
+        </div>
+
+        <table class="ui striped table">
+            <thead>
+            <tr>
+                <th>机器名</th>
+                <th>IP</th>
+                <th>远程控制卡IP</th>
+            </tr>
+            </thead>
+        {% for h in all_hosts %}
+            <tr>
+                <td>{{h[1]}}</td>
+                <td>{{h[2]}}</td>
+                <td>{{h[3]}}</td>
+            </tr>
+        {% endfor %}
+        </table>
+    </div>
+
+    <div class="ui bottom attached tab segment" data-tab="template">
+    </div>
+</div>
+{% endblock %}

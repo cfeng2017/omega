@@ -1,0 +1,18 @@
+{% extends "asset/hbase.html" %}
+
+{% block form %}
+<div class="summary">
+    <h2>指定安装主机</h2>
+    <div class="ui green segment host_add_main" >
+        <form action="/asset/h/add_host_wizard/hosts/" class="ui form" id="form" method="post">
+            <p>请输入机器名或ip；可支持正则表达式，如10.1.1.[2-5]或host[1-3].network.com等。</p>
+            <h5>{{form.haf_text}}</h5><br>
+            {{form.haw_type}}
+            <div class="host_add_operation">
+                {{form.host_ip_pre(class_="ui green button operation_pre")}}
+                {{form.host_ip_next(class_="ui green button operation_next")}}
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

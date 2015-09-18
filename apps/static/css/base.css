@@ -1,0 +1,148 @@
+body {
+    margin: 0;
+    height: 100%;
+    color: #555555;
+    font-size: 14px;
+}
+
+header {
+    overflow: hidden;
+}
+
+nav.ui.inverted.menu {
+    background-color: #333;
+    border-radius: 0;
+}
+
+.left-width {
+    width: 167px;
+}
+
+.horizon-center {
+    text-align: center;
+}
+
+.msg-container {
+    margin: 0 1em;
+}
+
+.ui.floating.label.msg-location {
+    margin: 1.2em 0 0 -2.2em !important;
+}
+
+.right-margin {
+    margin-right: 1.2em;
+}
+
+a {
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.header-url {
+    float: right;
+    font-size: 1.2em;
+}
+
+.header-url a, .header-all a:visited {
+    color: #D3D3D3;
+}
+
+.header-url a:hover {
+    color: #FFFFFF;
+}
+
+.container {
+    width: 100%;
+    overflow: hidden;
+    margin-bottom: 33px;
+    display: -webkit-flex;
+    display: flex;
+    margin-top: 3em;
+}
+
+.sidebar-menu {
+    height: 100vh;
+    float: left;
+    background-color: #D3D3D3;
+    width: 167px;
+    margin-right: 1.7em;
+    position: fixed;
+    z-index: 1;
+    margin-bottom: 33px;
+}
+
+.sidebar-toggler-wrapper {
+    overflow: hidden;
+}
+
+.sidebar-toggler {
+    border-radius: 5px 0 0 5px;
+    width: 25px;
+    height: 25px;
+    margin: 1.7em 0;
+    float: right;
+    background-color: #FFFFFF;
+    cursor: pointer;
+}
+
+#angle-icon {
+    margin: 0 0 0.2em 0;
+    line-height: 25px;
+    cursor: pointer;
+}
+
+div .ui.menu {
+    background: #D3D3D3;
+    line-height: 20px;
+    margin-top: -0.3em;
+}
+
+.ui.vertical.menu {
+    width: 166px;
+    border-radius: 0;
+    background-color: #D3D3D3;
+}
+
+.ui.vertical.menu .item>i.icon {
+    float: left;
+    margin: 0 1.3em 0 0;
+}
+
+.content {
+    margin-left: 183px;
+    margin-top: 13px;
+    overflow: hidden;
+    flex: 1;
+}
+
+.breadcrumb {
+    background-color: #D3D3D3;
+    width: 100%;
+    border-radius: 4px;
+    padding: 0.7em 0 0.7em 1.5em;
+}
+
+.breadcrumb .section {
+    font-size: 120%;
+}
+
+.ui.breadcrumb a, .ui.breadcrumb a:visited, .ui.breadcrumb a:hover {
+    color: rgba(0, 0, 0, 0.8);
+}
+
+footer {
+    height: 2em;
+    line-height: 2em;
+    position: fixed;
+#    position: absolute;
+    width: 100%;
+    bottom: 0;
+    z-index: 2;
+    background-color: #333;
+}
+
+.bottom-text {
+    color: rgba(211, 211, 211, 0.5);
+    text-align: center;
+}

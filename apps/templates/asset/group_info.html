@@ -1,0 +1,103 @@
+{% extends "asset/abase.html" %}
+
+
+{% block abc %}
+    <a class="section" href="/asset">资产</a>
+    <div class="divider">/</div>
+    <a class="active section" href="/asset/g/">组</a>
+{% endblock %}
+
+{% block maincontent %}
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <ul class=flashes>
+        {% for category, message in messages %}
+          <li class="{{ category }}">{{ message }}</li>
+        {% endfor %}
+        </ul>
+    {% endif %}
+{% endwith %}
+
+<div class="summary">
+    <div class="ui top attached tabular menu">
+      <a class="item active" data-tab="group">组</a>
+      <a class="item" data-tab="gdb">db</a>
+      <a class="item" data-tab="gtype">组类型</a>
+    </div>
+    <div class="ui bottom attached tab segment active" data-tab="group">
+        <div>
+            <a class="ui green button" href="/asset/g/add/">新建组</a>
+        </div>
+        <select id="group_type">
+            {% for t in gtypes %}
+                {% if groups and t.id == groups[0]['type'] %}
+                    <option value={{t.id}} selected="selected">{{t.type|upper}}</option>
+                {% else %}
+                    <option value={{t.id}}>{{t.type|upper}}</option>
+                {% endif %}
+            {% endfor %}
+        </select>
+        <div>
+            <table class="ui striped table" id="group_list">
+                <thead>
+                <tr>
+                    <th>group</th>
+                    <th>业务描述</th>
+                    <th>业务联系人</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for group in groups %}
+                <tr>
+                    <td>{{group['name']}}</td>
+                    <td>{{group['description']}}</td>
+                    <td>{{group['contacts']}}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <div class="ui bottom attached tab segment" data-tab="gdb">
+        <div>
+            <div>
+            <a class="ui green button" href="/asset/gdb/add/">新建db</a>
+            </div>
+
+            <table class="ui striped table">
+                <thead>
+                <tr>
+                    <th>db</th>
+                    <th>group</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for db in dbs %}
+                <tr>
+                    <td>{{db[1]}}</td>
+                    <td>{{db[2]}}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="ui bottom attached tab segment" data-tab="gtype">
+        <div>
+            <div>
+            <a class="ui green button" href="/asset/gtype/add/">新建组类型</a>
+            </div>
+            <ul>
+               {% for t in gtypes %}
+               <li>{{t.type|upper}}</li>
+               {% endfor %}
+            </ul>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends "asset/hbase.html" %}
+{% block subcss %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/jquery.datetimepicker.css') }}">
+{% endblock%}
+
+{% block title %}
+<h3 class="ui horizontal divider header"><i class="green write chart icon"></i>
+新建主机
+</h3>
+{% endblock %}
+
+{% block form %}
+{% from "formhelpers.html" import render_table_field with context %}
+<form action="/asset/h/add/" class="ui form" id="hform" method="post">
+    <table>
+        <tbody class="block_wrapper">
+        {{render_table_field(form.h_name)}}
+        {{render_table_field(form.h_core, placeholder="请填写整数")}}
+        {{render_table_field(form.h_memory, placeholder="请填写整数，单位:G")}}
+        </tbody>
+        <tbody class="multi_field_wrapper">
+        {{render_table_field(form.h_disk_type)}}
+        {{render_table_field(form.h_disk_num, placeholder="请填写整数")}}
+        {{render_table_field(form.h_disk_size, placeholder="请填写整数，单位:G")}}
+        </tbody>
+        <tbody class="multi_field_wrapper">
+        {{render_table_field(form.h_eth)}}
+        {{render_table_field(form.h_ip)}}
+        </tbody>
+        <tbody class="block_wrapper">
+        {{render_table_field(form.h_remote_ip)}}
+        {{render_table_field(form.h_idc)}}
+        {{render_table_field(form.h_rack)}}
+        {{render_table_field(form.h_brf)}}
+        {{render_table_field(form.h_brt)}}
+        {{render_table_field(form.h_status)}}
+        {{render_table_field(form.h_remark)}}
+        </tbody>
+    </table>
+    {{form.h_submit(class_="ui button")}}
+</form>
+{% endblock %}

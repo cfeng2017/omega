@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>omega</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/semantic.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <script src="{{ url_for('static', filename='js/jquery-2.1.3.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/semantic.min.js') }}"></script>
+    {% block header %}
+    {% endblock %}
+</head>
+<body>
+<header>
+    <nav class="ui fixed top inverted menu">
+        <div class="item left-width horizon-center">
+		    <a href="/"><big>Omega</big></a>
+		</div>
+
+        <div class="item ui category search">
+            <div class="ui icon input">
+                <input class="prompt" type="text" placeholder="Search" id="header_search">
+                <i class="search icon"></i>
+            </div>
+            <div class="results"></div>
+        </div>
+
+        <div class="right menu">
+            <div class="item msg-container">
+                <i class="large mail icon">
+                    {% if not use_msg %}
+                    <span class="floating ui circular red label msg-location"></span>
+                    {% endif %}
+                </i>
+            </div>
+            <div class="item right-margin">
+                <div class="">
+                    {% if not g.user.is_authenticated() %}
+                    <span class="header-url"><a href="/login/">Login</a></span>
+                    {% else %}
+                    {{ g.user.name }}<span class="header-url"><a href="/logout/">Logout</a></span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+</header>
+
+<div class="container">
+    <div class="sidebar-menu">
+        <div class="sidebar-toggler-wrapper">
+            <div class="sidebar-toggler">
+                <i class="angle left large icon" id="angle-icon"></i>
+            </div>
+        </div>
+
+        <div class="ui vertical menu">
+            <div class="item">
+                <a class="haeder" href="/dashboard/">
+                    <i class="dashboard icon"></i>
+                    <span>DashBoard</span>
+                </a>
+            </div>
+
+            <div class="item">
+                <a class="haeder" href="/asset/">
+                    <i class="dashboard icon"></i>
+                    <span>资产</span>
+                </a>
+                <div class="menu">
+                  <a class="item" href="/asset/g/">Group</a>
+                  <a class="item" href="/asset/h/">Host</a>
+                  <a class="item" href="/asset/i/">Instance</a>
+                </div>
+            </div>
+
+            <div class="item">
+                <a class="header" href="/monitor/">
+                    <i class="unhide icon"></i>
+                    <span>监控</span>
+                </a>
+                <div class="menu">
+                  <div class="item">MySQL
+                    <div class="menu">
+                    </div>
+                  </div>
+                  <div class="item">Redis
+                    <div class="menu">
+                    </div>
+                  </div>
+                  <div class="item">Memcached
+                    <div class="menu">
+                    </div>
+                  </div>
+                </div>
+            </div>
+
+            <div class="item">
+                <a class="header" href="/archive">
+                    <i class="archive icon"></i>
+                    <span>归档</span>
+                </a>
+            </div>
+
+            <!--<a class="item" href="/slow/">-->
+                <!--<i class="unhide icon"></i>-->
+                <!--<span></span>-->
+            <!--</a>-->
+
+            <div class="item">
+                <a class="header" href="/lab/">
+                    <i class="lab icon"></i>
+                    <span>Lab</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="content right-margin">
+        <div class="ui breadcrumb">
+            {% block breadcrumb %}
+            {% endblock %}
+        </div>
+
+        <div class="maincontent">
+            {% block maincontent %}
+            {% endblock %}
+        </div>
+    </div>
+</div>
+
+<footer>
+    <div class="bottom-text left-width">
+        <big>Omega&nbsp;&nbsp;&copy;DB</big>
+    </div>
+</footer>
+
+{% block scripts %}
+{% endblock %}
+</body>
+</html>

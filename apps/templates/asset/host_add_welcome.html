@@ -1,0 +1,20 @@
+{% extends "asset/hbase.html" %}
+
+{% block form %}
+<div class="summary">
+    <h2>Add Host Wizard</h2>
+    <div class="ui orange segment">欢迎安装主机！</div>
+
+    <div class="ui green segment host_add_main" >
+        <form action="/asset/h/add_host_wizard/hosts/" class="ui form" id="form" method="post">
+            <h5>{{form.haw_type.label}}</h5><br>
+            {{form.haw_type}}
+            <div class="host_add_operation">
+                <!--<p><submit class="ui green button operation_pre" id="host_wel_pre">返回</submit></p>-->
+                <!--<p><button class="ui green button operation_next" id="host_wel_next">下一步</button></p>-->
+                {{form.host_wel_next(class_="ui green button operation_next")}}
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

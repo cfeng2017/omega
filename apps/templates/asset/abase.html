@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block header %}
+    {% block subcss %}
+    {% endblock %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/asset.css') }}">
+{% endblock %}
+
+{% block breadcrumb %}
+    <a class="section" href="/">Omega</a>
+    <div class="divider">/</div>
+    {% block abc %}
+    {% endblock %}
+{% endblock %}
+
+{% block maincontent %}
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/asset.js') }}"></script>
+<script src="{{ url_for('static', filename='js/jquery.datetimepicker.js') }}"></script>
+{% endblock %}
