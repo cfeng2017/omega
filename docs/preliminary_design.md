@@ -117,7 +117,7 @@ Omega Preliminary Design
 组类型比较复杂，除了Mysql，Redis等分组外，对于自定义分组也是兼容的，如添加某部门的业务监控，在类型表中新增“业务”项，然后在`group`加部门即可。
 该表数据最好同时在redis做存储以提高查询速度。
 ```shell
-CREATE TABLE group_types {
+CREATE TABLE t_group_type {
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     type VARCHAR(30) NOT NULL DEFAULT '' COMMENT '类型名',
     primary key(id)
@@ -127,7 +127,7 @@ CREATE TABLE group_types {
 - 数据库表    
 存取信息是各db所对应的gid。
 ```shell
-CREATE TABLE group_dbs {
+CREATE TABLE t_group_db {
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     gid INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '组id',
     db VARCHAR(30) NOT NULL DEFAULT '' COMMENT 'db名',
@@ -136,14 +136,14 @@ CREATE TABLE group_dbs {
     key idx_db(db)
 }ENGINE=INNODB DEFAULT CHARSET=utf8;
 ```
-该表用来根据数据库名查询其所在的机器和查询机器的所有db。其查询语句为`select gid from group_dbs where db='$DB_NAME'`。
+该表用来根据数据库名查询其所在的机器和查询机器的所有db。其查询语句为`select gid from t_group_db where db='$DB_NAME'`。
 
 - Group   
 
 存储各组，包括自定义的分组。其字段如下：
 
 ```
-CREATE TABLE groups (
+CREATE TABLE t_group (
 id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
 name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '组名',
 type TINYINT NOT NULL DEFAULT 0 COMMENT '表all_types的id',
@@ -156,13 +156,13 @@ index idx_type(type)
 ```
 
 查询语句如下：
-`SELECT id, name from groups where type='$TYPE';`
+`SELECT id, name from t_group where type='$TYPE';`
 
 - Host    
 Host表主要存储机器物理方面的性质，其表结构如下：
 
 ```
-CREATE TABLE hosts (
+CREATE TABLE t_host (
 id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 host VARCHAR(32) NOT NULL DEFAULT '' COMMENT '主机名',
 cores INT NOT NULL DEFAULT 0 COMMENT 'cpu核数',
@@ -192,7 +192,7 @@ index idx_host host,
 mysql实例表：
 
 ```
-CREATE TABLE mysql_instances (
+CREATE TABLE t_mysql_instance (
 id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 gid INT NOT NULL DEFAULT 0 COMMENT '组id',
 hid INT NOT NULL DEFAULT 0 COMMENT 'host_id',
@@ -214,7 +214,7 @@ IP不写的话，默认使用host的ip。
 redis实例表：
 
 ```shell
-CREATE TABLE redis_instances (
+CREATE TABLE t_redis_instances (
 id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 gid INT NOT NULL DEFAULT 0 COMMENT '组id',
 hid INT NOT NULL DEFAULT 0 COMMENT 'host_id',
@@ -235,8 +235,8 @@ KEY idx_id(gid, hid)
 
 memcached实例表：
 
-```mysql
-CREATE TABLE memcached_instances (
+```bash
+CREATE TABLE t_mc_instance (
 id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 gid INT NOT NULL DEFAULT 0 COMMENT '组id',
 hid INT NOT NULL DEFAULT 0 COMMENT 'host_id',
@@ -256,49 +256,106 @@ KEY idx_id(gid, hid)
 ```
 
 显示所有实例时，根据`groups`中的结果来查找所有实例，查询语句如下：    
-`SELECT * from instances where gid=$GROUP.id`。
+
+`SELECT * from t_mc_instance where gid=$GROUP.id`。
+
+- 监控模板表
+
+模板表用来批量生成监控图(`t_monitor_charts`)及其数据源表(`t_monitor_ds`)数据。表结构如下：
+
+```shell
+CREATE TABLE t_monitor_template (
+id INT NOT NULL AUTO_INCREMENAT PRIMARY KEY COMMENT '监控模板id',
+name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '模板名称',
+chart_name VARCHAR(50) NOT NULL DEFUALT '' COMMENT '图表名称',
+ds_name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '数据源名称',
+alarm_status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否开启报警',
+interval INT NOT NULL DEFAULT 1 COMMENT '报警间隔，单位为分',
+last INT NOT NULL DEFAULT 0 COMMENT '延时报警，单位为分',
+alarm_condition VARCAHR(200) NOT NULL DEFAULT '' COMMENT '报警条件',
+description VARCHAR(300) NOT NULL DEFAULT '' COMMENT '描述', 
+updatetime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+)ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT='监控模板表';
+```
+
+`alarm_condition`是发送报警的条件，条件可以有多个，使用`&`或`|`连接，`&`代表and, `|`代表or，格式为 `condition1[&|\|]condition2`，
+每个conditon的格式为`ds_name,alarm_type,operation,operand_1,oprand_2,...,[!]`，该格式类似计算机存储数据的方法。alarm_type的类型有
+差值的绝对值，差值的范围，数据源极值，增长率， 分别以1,2,3,4做代表码，operation的类型有：`>`，`>=`，`=`，`<`，`<=`，`!=`,`between`。
+对于报警，一般有如下情况：
+
+- 两者差值大于某绝对值
+
+ds_name_1,1,>,10000
+
+- 两者差值位于某区间
+
+ds_name_1,1,between,5000,10000
+
+between代表的意思是闭区间[a,b]，若想表达a<ds_name_1<=b的意思，可用2个条件代替： ds_name_1,1,>,a&ds_name_1,1,<=,b。
+
+- 两者差值范围不大于某值
+
+ds_name_1,2,>,60%,!
+
+- 数据源最大值小于某值
+
+ds_name_1,3,<,100000
+
+- 数据增长率小于某值
+
+ds_name_1,4,<,10
+
+监控模板的定义应该如下：
+
+```
+   图表名   |  数据源名 |  开启报警 | 报警间隔 | 延时报警 | 报警类型 | 报警阈值 | 报警条件  |描述
+  ---------|---------|---------|---------|---------|---------|--------|----------|----
+   流量     | 出口流量  | 1      | 5       | 0       | 3      | 1000     |         |
+   流量     | 入口流量  | 1      | 5       | 0       | 3      | 1000     |         |
+```
+
+`chart_name`、`ds_name`和`alarm_status`用于生成`t_monitor_chart`中的`chart_name`、`ds_name`和`alarm_status`，
+该表中`threshold_type`，`threshold`由`ds_name`决定，而`interval`， `last`，`alarm_condition`，`description`
+由`chart_name`决定--即对于同一个`chart_name`，若有多个`ds_name`，这几个字段都应相同。
+
+这里说下将监控与生成图表分开的原因：对于监控而言，批量监控多于单个监控，若监控的阈值、间隔都放在单个监控项（即`t_monitor_chart`）中，当批量更新
+修改时，需要将`t_monitor_chart`中多个字段都修改，因此监控项放在template表中。在`t_monitor_template`中，若只需对一个监控添加监控项，
+添加一条记录即可，但其`name`需指定为空。
 
 - 监控表
 
-图表monitor_charts分为三个层次的报警，分别是组，主机，实例，其表结构如下：
+图表t_monitor_chart分为三个层次的报警，分别是组，主机，实例，其表结构如下：
 
-```mysql
-CREATE TABLE monitor_charts (
-id INT NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '图表ID',
+```shell
+CREATE TABLE t_monitor_chart (
+id INT NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '数据源ID',
+ds_name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '数据源名称',
 chart_name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '图表名称',
 gid INT NOT NULL DEFAULT 0 COMMENT 'group id',
-sid INT NOT NULL DEFAULT 0 COMMENT '二级id，类似host id，业务id等',
-tid INT NOT NULL DEFAULT 0 COMMENT '三级id，类似各instance表id',
+hid INT NOT NULL DEFAULT 0 COMMENT '二级id，类似host id，业务id等',
+iid INT NOT NULL DEFAULT 0 COMMENT '三级id，类似各instance表id',
+creator INT NOT NULL DEFAULT 0 COMMENT '建表用户id',
 contacts VARCHAR(200) NOT NULL DEFAULT '' COMMENT '联系人or接警人邮箱，以 , 做分隔',
 alarm_status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否开启报警。开启：1，关闭：0',
-interval INT NOT NULL DEFAULT 1 COMMENT '报警间隔，单位为分',
-last INT NOT NULL DEFAULT 0 COMMENT '延时报警，单位为分',
-mode TINYINT NOT NULL DEFAULT 0 COMMENT '接警方式，邮件：0，短信：1，微信：2',
-threshold VARCAHR(200) NOT NULL DEFAULT '' COMMENT '报警阈值，差值的百分比：1，差值的绝对值：2，极值：3，斜率：4，以json保存',
-key idx_id(gid, hid, tid)
+monitor_template_id INT NOT NULL DEFAULT 0 COMMENT 't_monitor_template的id',
+key idx_id (gid, hid, iid),
+key idx_template_id (monitor_template_id)
 )ENGINE=INNODB DEFAULT CHARSET=utf8 COMMENT '监控图表信息'
 ```
 
-对于上述表结构，`gid`和`tid`联合保证了该行的唯一性，即使mysql和nosql的id相同，但其gid一定不同，因此记录不会是重复的。是否还需要oip？
+对于上述表结构，`gid`和`iid`联合保证了该行的唯一性，即使mysql和nosql的id相同，但其gid一定不同，因此记录不会是重复的。对于未来新增的图，再新加
+字段。
 
-- 数据源表
-
-数据源monitor_ds表结构如下：
-
-```mysql
-CREATE TABLE monitor_ds (
-id  INT NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '数据源ID',
-name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '数据源名称',
-chart_id INT NOT NULL DEFAULT 0 COMMENT 'chart id',
-)ENGINE=INNODB DEFAULT CHARSET=utf8 COMMENT '监控数据源的信息表';
-```
+`t_monitor_template`用于初始化`t_monitor_chart`中字段，这样当添加监控时，相应各监控项也添加完成。初始化之后，
+生成图表直接读取`t_monitor_chart`及`t_monitor_ds_YYYYmmdd`即可。发报警时，读取`t_monitor_template`、`t_monitor_chart`和
+`t_monitor_ds_YYYYmmdd`数据即可。
 
 - 每日数据源表     
 
-monitor_ds_YYYYmmdd表结构如下：
+t_monitor_ds_YYYYmmdd表结构如下：
 
 ```mysql
-CREATE TABLE monitor_ds_YYYYmmdd (
+CREATE TABLE t_monitor_ds_YYYYmmdd (
 id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 ds_id INT NOT NULL DEFAULT 0 COMMENT '图表中数据源ID',
 value INT NOT NULL DEFAULT 0 COMMENT '数据值',
@@ -312,7 +369,8 @@ INDEX idx_1(ds_id, updatetime)
 查询语句：  
 - `SELECT value FROM monitor_ds_YYYYMMDD where chart_id=1000 and ds_id=1000100 and updatetime>='2009-12-12 12:00:00' and updatetime<='2009-12-12 13:00:00';`
 
-一般而言，对最近1天，最近3天，最近1周，最近1个月，最近1年的查询是较多的，若都是天表，当查询天数越来越多时，需要查询的表也起来越多，响应时间会越来越长。因此对1周，1个月，1年的情况，还需要单独建表，以提高查询速度，避免浏览器卡死。
+一般而言，对最近1天，最近3天，最近1周，最近1个月，最近1年的查询是较多的，若都是天表，当查询天数越来越多时，需要查询的表也起来越多，
+响应时间会越来越长。因此对1周，1个月，1年的情况，还需要单独建表，以提高查询速度，避免浏览器卡死。
 
 - 周数据源表     
 

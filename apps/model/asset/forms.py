@@ -1,4 +1,4 @@
-#! -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 from wtforms import Form, StringField, validators, SubmitField, SelectMultipleField, DateTimeField, \
     SelectField, FormField, TextAreaField, IntegerField, BooleanField, RadioField, widgets
 

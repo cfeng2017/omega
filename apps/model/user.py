@@ -1,4 +1,4 @@
-#! -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 from apps import db
 from flask_login import UserMixin
 
@@ -15,6 +15,8 @@ class User(db.Model, UserMixin):
     department_name = db.Column(db.String(30), nullable=False, default='')
     is_admin = db.Column(db.Boolean, nullable=False, default=False)
     is_alive = db.Column(db.Boolean, nullable=False, default=True)
+    alarm_email = db.Column(db.String(200), nullable=False, default='', doc='接警邮件')
+    alarm_mode = db.Column(db.SmallInteger, nullable=False, default=0, doc='接警方式，0: 不接警，1: 邮件，2: 短信，3:微信')
 
     def __init__(self, uid, name, email, mobile, english_name, department_name, is_admin, is_alive):
         self.uid = uid
@@ -43,3 +45,6 @@ class User(db.Model, UserMixin):
 
     def __repr__(self):
         return '<User {}>'.format(self.name)
+
+db.Index('idx_uid', User.uid, unique=True)
+
