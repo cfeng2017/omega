@@ -167,11 +167,11 @@ id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 host VARCHAR(32) NOT NULL DEFAULT '' COMMENT '主机名',
 cores INT NOT NULL DEFAULT 0 COMMENT 'cpu核数',
 memory INT NOT NULL DEFAULT 0 COMMENT '内存大小，以G为单位'
-disk VARCHAR(200) NOT NULL DEFAULT 0 COMEMNT '磁盘信息，Json字符串, 内容为(磁盘类型，磁盘个数，磁盘大小(以G为单位))形式', 
+disk VARCHAR(200) NOT NULL DEFAULT 0 COMEMNT '磁盘信息，json字符串，以[{'type': 'SAS', 'num': 4, 'size': 300}]的形式存储', 
 raid  SMALLINT NOT NULL DEFAULT 0 COMMENT '主要磁盘的raid级别，不包括系统盘',
 eth VARCHAR(10) NOT NULL DEFAULT '' COMMENT '主要网卡设备名，如eth0, em0等',
 ip VARCHAR(192) NOT NULL DEFAULT '' COMMENT '主ip',
-oips VARCHAR(192) NOT NULL DEFAULT '' COMMENT '其他网卡信息，包括虚拟ip。json字符串，内容为(设备名，ip)形式',
+oips VARCHAR(192) NOT NULL DEFAULT '' COMMENT '其他网卡信息，包括虚拟ip。json字符串，以[{'network': 'eth1', 'ip': '10.10.3.2'}]'的形式存储,
 remote_ip VARCHAR(32) NOT NULL DEFAULT '' COMMENT '远程控制卡IP',
 idc TINYINT NOT NULL DEFAULT 0 COMMENT '机房位置, IDC10: 0, IDC20: 1',
 rack VARCHAR(20) NOT NULL DEFAULT '' COMMENT '机架位置',
@@ -270,53 +270,27 @@ name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '模板名称',
 chart_name VARCHAR(50) NOT NULL DEFUALT '' COMMENT '图表名称',
 ds_name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '数据源名称',
 alarm_status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否开启报警',
-interval INT NOT NULL DEFAULT 1 COMMENT '报警间隔，单位为分',
-last INT NOT NULL DEFAULT 0 COMMENT '延时报警，单位为分',
-alarm_condition VARCAHR(200) NOT NULL DEFAULT '' COMMENT '报警条件',
+alarm_condition VARCHAR(800) NOT NULL DEFAULT '' COMMENT '报警设置。Json字符串。'
 description VARCHAR(300) NOT NULL DEFAULT '' COMMENT '描述', 
 updatetime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 )ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT='监控模板表';
 ```
 
-`alarm_condition`是发送报警的条件，条件可以有多个，使用`&`或`|`连接，`&`代表and, `|`代表or，格式为 `condition1[&|\|]condition2`，
-每个conditon的格式为`ds_name,alarm_type,operation,operand_1,oprand_2,...,[!]`，该格式类似计算机存储数据的方法。alarm_type的类型有
-差值的绝对值，差值的范围，数据源极值，增长率， 分别以1,2,3,4做代表码，operation的类型有：`>`，`>=`，`=`，`<`，`<=`，`!=`,`between`。
-对于报警，一般有如下情况：
-
-- 两者差值大于某绝对值
-
-ds_name_1,1,>,10000
-
-- 两者差值位于某区间
-
-ds_name_1,1,between,5000,10000
-
-between代表的意思是闭区间[a,b]，若想表达a<ds_name_1<=b的意思，可用2个条件代替： ds_name_1,1,>,a&ds_name_1,1,<=,b。
-
-- 两者差值范围不大于某值
-
-ds_name_1,2,>,60%,!
-
-- 数据源最大值小于某值
-
-ds_name_1,3,<,100000
-
-- 数据增长率小于某值
-
-ds_name_1,4,<,10
-
+`alarm_condition`是发送报警的条件，条件可以有多个，格式为'[{"time": "00:00-23:59", "mode": "1", "level": "warning",
+ "threshold": 2000, "interval": 5, "last": 5}, {"time": "09:00-18:00", "mode": "3", "level": "disaster",
+ "threshold": "30-40", "interval": 60, "last": 5}]'，time即报警时间段。mode即报警模式，分为上限模式，下限模式，范围模式，斜率模式，
+ 代表码为1，2，3，4。level是报警级别，分为'disaster'，'warning'。threshold为报警阈值，若为范围模式，则值为“下限-上限”。interval是报警
+ 间隔。last即超出该报警阈值多久后即发出报警。
+ 
 监控模板的定义应该如下：
 
-```
-   图表名   |  数据源名 |  开启报警 | 报警间隔 | 延时报警 | 报警类型 | 报警阈值 | 报警条件  |描述
-  ---------|---------|---------|---------|---------|---------|--------|----------|----
-   流量     | 出口流量  | 1      | 5       | 0       | 3      | 1000     |         |
-   流量     | 入口流量  | 1      | 5       | 0       | 3      | 1000     |         |
-```
+   图表名   |  数据源名 |  开启报警 | 报警间隔 | 延时报警 | 报警类型 |报警级别  | 报警阈值 |  报警时间 | 描述
+  ---------|---------|---------|---------|---------|---------|--------|-------- |---------|---
+   流量     | 出口流量  | 1      | 5       | 0       | 3       | disaster|  1000  |         |
+   流量     | 入口流量  | 1      | 5       | 0       | 3       | warning |  1000  |         | 
 
 `chart_name`、`ds_name`和`alarm_status`用于生成`t_monitor_chart`中的`chart_name`、`ds_name`和`alarm_status`，
-该表中`threshold_type`，`threshold`由`ds_name`决定，而`interval`， `last`，`alarm_condition`，`description`
-由`chart_name`决定--即对于同一个`chart_name`，若有多个`ds_name`，这几个字段都应相同。
+报警条件针对每一个数据源。
 
 这里说下将监控与生成图表分开的原因：对于监控而言，批量监控多于单个监控，若监控的阈值、间隔都放在单个监控项（即`t_monitor_chart`）中，当批量更新
 修改时，需要将`t_monitor_chart`中多个字段都修改，因此监控项放在template表中。在`t_monitor_template`中，若只需对一个监控添加监控项，
@@ -335,10 +309,11 @@ gid INT NOT NULL DEFAULT 0 COMMENT 'group id',
 hid INT NOT NULL DEFAULT 0 COMMENT '二级id，类似host id，业务id等',
 iid INT NOT NULL DEFAULT 0 COMMENT '三级id，类似各instance表id',
 creator INT NOT NULL DEFAULT 0 COMMENT '建表用户id',
-contacts VARCHAR(200) NOT NULL DEFAULT '' COMMENT '联系人or接警人邮箱，以 , 做分隔',
+contacts VARCHAR(200) NOT NULL DEFAULT '' COMMENT '接警人id，以空格做分隔',
 alarm_status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否开启报警。开启：1，关闭：0',
 monitor_template_id INT NOT NULL DEFAULT 0 COMMENT 't_monitor_template的id',
-key idx_id (gid, hid, iid),
+key idx_gid_iid (gid, iid),
+key idx_hid (hid),
 key idx_template_id (monitor_template_id)
 )ENGINE=INNODB DEFAULT CHARSET=utf8 COMMENT '监控图表信息'
 ```
