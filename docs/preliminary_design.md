@@ -102,6 +102,106 @@ Omega Preliminary Design
 - SQL解析与优化
 - Job调度
 
+### 具体设计
+#### 监控与报警
+
+##### 目的
+- 每个图表（基本监控项）可由一个或多个数据源构成，每个图表可以有一个或多个报警条件，报警条件与图表中的监控项关联。而不同组相同的监控项可共用一个报警
+条件--即报警模板。
+
+由上述需求知，需要4个表满足条件：数据源定义表`t_monitor_ds`，图表`t_monitor_chart`，报警模板表`t_alarm_template`和数据源数据表
+`t_monitor_ds_YYYYmmdd`。其中`t_monitor_ds`通过图表的id与之关联，图表通过报警模板表id与之关联。
+
+因此，展示图表时，需要查询`t_monitor_chart`, `t_monitor_ds`和`t_monitor_ds_YYYYmmdd`；展示配置时，需要查询`t_chart_chart`，
+`t_monitor_ds`和`t_alarm_template`；而当需要报警时，需通过`t_monitor_chart`获取`t_alarm_template`的查询条件，然后根据chart_id
+和`t_alarm__template`的ds_name查询`t_monitor_ds`的id，再与`t_monitor_ds_YYYYmmdd`比较。
+
+另外，对于`t_monitor_ds`，也可以通过新建模板`t_ds_template`来帮助其初始化。
+
+```
+                                   t_alarm_template
+                                         |   ^
+                                 ds_name |   |
+                                         |   | atid 
+                                         |   |
+                          chart_id       v   |         datasource_id
+       t_monitor_chart <------------ t_monitor_ds <--------------------- t_monitor_ds_YYYYmmdd
+            ^                              ^
+ chart_name |                              | ds_name
+ chart_desc |                              | ds_desc 
+            |                              | alarm_status
+     t_monitor_template -------------------|          
+     
+```
+
+##### 自定义监控说明
+
+目前监控要展示的图表除了mysql，nosql一些信息外，还需要展示自定义的监控信息，**在监控图，最好能展示具体细节信息**。
+自定义的监控数据可以重新建数据源表和监控表，表名以`_ext`结尾。本系统提供接口做监控报警展示用，各应用方推送数据即可。下面分别说明。
+
+- 对业务的监控展示
+
+业务监控具体可抽象为`部门-->业务-->业务监控项`，其中`部门`项可添加到`group`表中，业务一项可添加到`host`表，也可再新建一张表，
+这里为统一起见，选择新建表。 
+
+- app机器监控展示
+
+对于现有cmdb，pool对应group，主机信息对应`host`表，其他类推。
+
+- 交换机监控展示
+
+根据机房和机架来分组，各交换机放入host表，在host级别做监控即可。
+
+- 多层次监控展示  
+若业务监控信息不能抽象为`部门-->业务-->业务监控项`，则按如下思路来实现：创建子项，若子项直接是图表，则创建图表，否则仍可创建子项，
+直至最后为图表为止。如下：
+
+![self_monitor](images/self_monitor.png)
+
+#### 模板
+对于很多项目而言，如监控同一类型服务，同一组Mysql业务的slowlog等，一项一项增删改很不方便，本系统将使用模板的形式，对同一类型的实例
+批量统一管理，在每次新建组/主机/实例后，需选择或修改或新建相关模板，关联模板后才能完成新建流程。
+
+##### 模板定义
+不同于机器以组分类来定义实例集合，模板定义的是这些实体集合的配置，如报警阈值、启动参数等。后续相关的报警，初始化机器等均采用模板方式完成。
+同一模板对实例集合并发的执行操作。
+
+##### 模板属性说明
+
+- 默认模板包括一些初始化项
+- 模板可拷贝，拷贝的新模板可增删项目
+- 除默认模板外，模板可新建
+- 多个模板可一起定义某个实例集合
+
+#### ManagementCenter
+ManagementCenter是配置管理中心。
+
+- 查看机器角色
+对于Mysql/redis，有Master/Slave之分，且该角色定义在端口上。但对于Hadoop而言，其角色名为NameNode/SecondNameNode/DataNode，一个主机也可同时做NameNode和DataNode，角色定位在主机上。Hbase角色为HMaster/RegionServer，角色定位在主机上。
+
+#### 搜索
+搜索常有的几种需求如下：
+- 查找db所在的组
+- 根据DBRT号查找DBRT
+- 查找JOB
+- 查看机器的监控
+- 查看机器的slow
+
+这里不考虑全文索引。目前所使用的方式是在相应表中再加一个字段，如对于查找db所在组的需求，其实现方法是在group表中加一个`db`字段，用以存放每个group对应的db，查询时使用 `WHERE db LIKE %key%` 的方式来实现。此方案对字段限制过于严格，只能满足对这一字段的搜索，对于其他字段的搜索还需另写SQL语句，不太适合全局搜索。
+
+另外一种方案仍是每个表中再新加一个字段`search_field`，该字段存放的值是每行所有字段（不包括`search`字段本身）的合集，各字段之间以某一个delimiter分隔。查询时使用`WHERE search_field LIKE %key%`来实现。该方法能消除前一方法的限制，但仍有一些缺点。
+
+- 数据冗余
+- `LIKE %key%` 不能使用索引，且匹配多余数据，如 `LIKE %property_db%`，除了匹配 `propertys_db`，还会匹配`propertys_db_04`
+- 不能满足同时有多个匹配的情况，即使满足多个匹配的情况，但匹配词序固定，对于`condition1 condition2`，只能是`LIKE %condition1%condition2%`，对于`condition2 condition1`的情况无法匹配出来。
+- 无法自适应控制结果的重要顺序。对于所有结果返回的顺序一样，无法自适应调整优先级。
+
+还有一种做法是建立一个搜索表，每次增删改时，同时更新搜索表。其方法为将需要搜索的字段都放在该表中，能满足多字段的搜索，同时能做到根据结果重要性排序返回。在使用该方法时，不希望使用 `LIKE`的方式，使用在搜索输入框中会用redis/jquery来做自动完成的功能。该方法的缺点是对于少部分情况会出现搜索不到的情况，不过对于这种情况，可以将待搜索字段加入到搜索表中即可。
+
+当然，还可以开源的一些工具，如 solr, nutch, elasticsearch 等，这些工具对查询级别为千万以上表现良好，但增加了维护成本。
+
+本系统做为内部系统，查询量相较而言不大太，因此这里使用搜索表的方式。
+
 ### 数据设计
 #### ER图
 如下
@@ -259,20 +359,78 @@ KEY idx_id(gid, hid)
 
 `SELECT * from t_mc_instance where gid=$GROUP.id`。
 
-- 监控模板表
+- 监控表
 
-模板表用来批量生成监控图(`t_monitor_charts`)及其数据源表(`t_monitor_ds`)数据。表结构如下：
+图表t_monitor_chart分为三个层次的报警，分别是组，主机，实例，其表结构如下：
+
+```shell
+CREATE TABLE t_monitor_chart (
+id INT NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '图表ID',
+chart_name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '图表名称',
+gid INT NOT NULL DEFAULT 0 COMMENT 'group id',
+hid INT NOT NULL DEFAULT 0 COMMENT '二级id，类似host id，业务id等',
+iid INT NOT NULL DEFAULT 0 COMMENT '三级id，类似各instance表id',
+creator INT NOT NULL DEFAULT 0 COMMENT '建表用户id',
+contacts VARCHAR(200) NOT NULL DEFAULT '' COMMENT '接警人id，以空格做分隔',
+alarm_status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否开启报警。开启：1，关闭：0',
+description VARCHAR(500) NOT NULL DEFAULT '' COMMENT '图表说明',
+updatetime timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+key idx_gid_iid (gid, iid),
+key idx_hid (hid),
+key idx_template_id (monitor_template_id)
+)ENGINE=INNODB DEFAULT CHARSET=utf8 COMMENT '监控图表信息'
+```
+
+对于上述表结构，`gid`和`iid`联合保证了该行的唯一性，即使mysql和nosql的id相同，但其gid一定不同，因此记录不会是重复的。对于未来新增的图，再新加
+字段。
+
+- 数据源表
+数据源表t_monitor_ds的表结构如下：
+
+```shell
+CREATE TABLE t_monitor_ds (
+id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '数据源名称',
+description VARCHAR(200) NOT NULL DEFAULT '' COMMENT '描述',
+chart_id INT NOT NULL DEFAULT 0 COMMETN 't_monitor_chart的id',
+atid INT NOT NULL DEFAULT 0 COMMENT 't_monitor_template的id',
+alarm_status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否开启报警。开启：1，关闭：0',
+updatetime timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+INDEX idx_cid (chart_id)
+)ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT '监控数据源定义表';
+```
+
+- 数据源模板  
+
+一般而言，机器的物理监控基本相同，而各类型（如mysql，redis）的监控也基本相同。所以引入数据源模板。模板表用来批量生成监控
+图(`t_monitor_charts`)及其数据源表(`t_monitor_ds`)数据。
 
 ```shell
 CREATE TABLE t_monitor_template (
-id INT NOT NULL AUTO_INCREMENAT PRIMARY KEY COMMENT '监控模板id',
-name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '模板名称',
-chart_name VARCHAR(50) NOT NULL DEFUALT '' COMMENT '图表名称',
+id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+name VARCHART(50) NOT NULL DEFAULT '' COMMENT '数据源模板名',
 ds_name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '数据源名称',
-alarm_status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否开启报警',
-alarm_condition VARCHAR(800) NOT NULL DEFAULT '' COMMENT '报警设置。Json字符串。'
-description VARCHAR(300) NOT NULL DEFAULT '' COMMENT '描述', 
-updatetime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+ds_description VARCHAR(200) NOT NULL DEFAULT '' COMMENT '数据源说明',
+chart_name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '图表名称',
+chart_description VARCHAR(200) NOT NULL DEFAULT '' COMMENT '图表说明',
+alarm_status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '该ds是否开启报警',
+updatetime timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+INDEX idx_name (name)
+)ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT '数据源模板表';
+```
+
+- 报警模板表
+
+表结构如下：
+
+```shell
+CREATE TABLE t_alarm_template (
+id INT NOT NULL AUTO_INCREMENAT PRIMARY KEY COMMENT '报警模板id',
+name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '报警模板名',
+ds_name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '数据源名',
+alarm_condition VARCHAR(1000) NOT NULL DEFAULT '' COMMENT '报警设置。Json字符串。',
+updatetime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+INDEX index_ds_name (ds_name)
 )ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT='监控模板表';
 ```
 
@@ -289,47 +447,16 @@ updatetime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMEST
    流量     | 出口流量  | 1      | 5       | 0       | 3       | disaster|  1000  |         |
    流量     | 入口流量  | 1      | 5       | 0       | 3       | warning |  1000  |         | 
 
-`chart_name`、`ds_name`和`alarm_status`用于生成`t_monitor_chart`中的`chart_name`、`ds_name`和`alarm_status`，
-报警条件针对每一个数据源。
-
-这里说下将监控与生成图表分开的原因：对于监控而言，批量监控多于单个监控，若监控的阈值、间隔都放在单个监控项（即`t_monitor_chart`）中，当批量更新
-修改时，需要将`t_monitor_chart`中多个字段都修改，因此监控项放在template表中。在`t_monitor_template`中，若只需对一个监控添加监控项，
+这里说下将监控与生成图表分开的原因：对于监控而言，批量监控多于单个监控，若监控的阈值、间隔都放在单个监控项（即`t_monitor_ds`）中，当批量更新
+修改时，需要将`t_monitor_ds`中多个字段都修改，因此监控项放在template表中。在`t_alarm_template`中，若只需对一个监控添加监控项，
 添加一条记录即可，但其`name`需指定为空。
 
-- 监控表
-
-图表t_monitor_chart分为三个层次的报警，分别是组，主机，实例，其表结构如下：
-
-```shell
-CREATE TABLE t_monitor_chart (
-id INT NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '数据源ID',
-ds_name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '数据源名称',
-chart_name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '图表名称',
-gid INT NOT NULL DEFAULT 0 COMMENT 'group id',
-hid INT NOT NULL DEFAULT 0 COMMENT '二级id，类似host id，业务id等',
-iid INT NOT NULL DEFAULT 0 COMMENT '三级id，类似各instance表id',
-creator INT NOT NULL DEFAULT 0 COMMENT '建表用户id',
-contacts VARCHAR(200) NOT NULL DEFAULT '' COMMENT '接警人id，以空格做分隔',
-alarm_status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否开启报警。开启：1，关闭：0',
-monitor_template_id INT NOT NULL DEFAULT 0 COMMENT 't_monitor_template的id',
-key idx_gid_iid (gid, iid),
-key idx_hid (hid),
-key idx_template_id (monitor_template_id)
-)ENGINE=INNODB DEFAULT CHARSET=utf8 COMMENT '监控图表信息'
-```
-
-对于上述表结构，`gid`和`iid`联合保证了该行的唯一性，即使mysql和nosql的id相同，但其gid一定不同，因此记录不会是重复的。对于未来新增的图，再新加
-字段。
-
-`t_monitor_template`用于初始化`t_monitor_chart`中字段，这样当添加监控时，相应各监控项也添加完成。初始化之后，
-生成图表直接读取`t_monitor_chart`及`t_monitor_ds_YYYYmmdd`即可。发报警时，读取`t_monitor_template`、`t_monitor_chart`和
-`t_monitor_ds_YYYYmmdd`数据即可。
 
 - 每日数据源表     
 
 t_monitor_ds_YYYYmmdd表结构如下：
 
-```mysql
+```shell
 CREATE TABLE t_monitor_ds_YYYYmmdd (
 id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 ds_id INT NOT NULL DEFAULT 0 COMMENT '图表中数据源ID',
@@ -407,77 +534,6 @@ INDEX idx_skey (skey)
 对于单字段的查询，直接查询`skey`并返回`value`，`value`应能说明`skey`的大概，然后用户选择`value`后再去查询相关表。
 对于多字段的查询，需要将所以查询返回结果求交集。若使用了redis做查询，还需要更新redis。
 返回结果根据`weight`来排序。
-
-##### 对于自定义监控的说明
-
-### 具体设计
-#### 监控
-
-目前监控要展示的图表除了mysql，nosql一些信息外，还需要展示自定义的监控信息，**在监控图，最好能展示具体细节信息**。
-自定义的监控数据可以重新建数据源表和监控表，表名以`_ext`结尾。本系统提供接口做监控报警展示用，各应用方推送数据即可。下面分别说明。
-
-- 对业务的监控展示
-
-业务监控具体可抽象为`部门-->业务-->业务监控项`，其中`部门`项可添加到`group`表中，业务一项可添加到`host`表，也可再新建一张表，
-这里为统一起见，选择新建表。 
-
-- app机器监控展示
-
-对于现有cmdb，pool对应group，主机信息对应`host`表，其他类推。
-
-- 交换机监控展示
-
-根据机房和机架来分组，各交换机放入host表，在host级别做监控即可。
-
-- 多层次监控展示  
-若业务监控信息不能抽象为`部门-->业务-->业务监控项`，则按如下思路来实现：创建子项，若子项直接是图表，则创建图表，否则仍可创建子项，
-直至最后为图表为止。如下：
-
-![self_monitor](images/self_monitor.png)
-
-#### 模板
-对于很多项目而言，如监控同一类型服务，同一组Mysql业务的slowlog等，一项一项增删改很不方便，本系统将使用模板的形式，对同一类型的实例
-批量统一管理，在每次新建组/主机/实例后，需选择或修改或新建相关模板，关联模板后才能完成新建流程。
-
-##### 模板定义
-不同于机器以组分类来定义实例集合，模板定义的是这些实体集合的配置，如报警阈值、启动参数等。后续相关的报警，初始化机器等均采用模板方式完成。
-同一模板对实例集合并发的执行操作。
-
-##### 模板属性说明
-
-- 默认模板包括一些初始化项
-- 模板可拷贝，拷贝的新模板可增删项目
-- 除默认模板外，模板可新建
-- 多个模板可一起定义某个实例集合
-
-#### ManagementCenter
-ManagementCenter是配置管理中心。
-
-- 查看机器角色
-对于Mysql/redis，有Master/Slave之分，且该角色定义在端口上。但对于Hadoop而言，其角色名为NameNode/SecondNameNode/DataNode，一个主机也可同时做NameNode和DataNode，角色定位在主机上。Hbase角色为HMaster/RegionServer，角色定位在主机上。
-
-#### 搜索
-搜索常有的几种需求如下：
-- 查找db所在的组
-- 根据DBRT号查找DBRT
-- 查找JOB
-- 查看机器的监控
-- 查看机器的slow
-
-这里不考虑全文索引。目前所使用的方式是在相应表中再加一个字段，如对于查找db所在组的需求，其实现方法是在group表中加一个`db`字段，用以存放每个group对应的db，查询时使用 `WHERE db LIKE %key%` 的方式来实现。此方案对字段限制过于严格，只能满足对这一字段的搜索，对于其他字段的搜索还需另写SQL语句，不太适合全局搜索。
-
-另外一种方案仍是每个表中再新加一个字段`search_field`，该字段存放的值是每行所有字段（不包括`search`字段本身）的合集，各字段之间以某一个delimiter分隔。查询时使用`WHERE search_field LIKE %key%`来实现。该方法能消除前一方法的限制，但仍有一些缺点。
-
-- 数据冗余
-- `LIKE %key%` 不能使用索引，且匹配多余数据，如 `LIKE %property_db%`，除了匹配 `propertys_db`，还会匹配`propertys_db_04`
-- 不能满足同时有多个匹配的情况，即使满足多个匹配的情况，但匹配词序固定，对于`condition1 condition2`，只能是`LIKE %condition1%condition2%`，对于`condition2 condition1`的情况无法匹配出来。
-- 无法自适应控制结果的重要顺序。对于所有结果返回的顺序一样，无法自适应调整优先级。
-
-还有一种做法是建立一个搜索表，每次增删改时，同时更新搜索表。其方法为将需要搜索的字段都放在该表中，能满足多字段的搜索，同时能做到根据结果重要性排序返回。在使用该方法时，不希望使用 `LIKE`的方式，使用在搜索输入框中会用redis/jquery来做自动完成的功能。该方法的缺点是对于少部分情况会出现搜索不到的情况，不过对于这种情况，可以将待搜索字段加入到搜索表中即可。
-
-当然，还可以开源的一些工具，如 solr, nutch, elasticsearch 等，这些工具对查询级别为千万以上表现良好，但增加了维护成本。
-
-本系统做为内部系统，查询量相较而言不大太，因此这里使用搜索表的方式。
 
 ### 类设计
 #### Message
