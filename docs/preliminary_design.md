@@ -106,25 +106,27 @@ Omega Preliminary Design
 #### 监控与报警
 
 ##### 目的
-- 每个图表（基本监控项）可由一个或多个数据源构成，每个图表可以有一个或多个报警条件，报警条件与图表中的监控项关联。而不同组相同的监控项可共用一个报警
-条件--即报警模板。
 
-由上述需求知，需要4个表满足条件：数据源定义表`t_monitor_ds`，图表`t_monitor_chart`，报警模板表`t_alarm_template`和数据源数据表
-`t_monitor_ds_YYYYmmdd`。其中`t_monitor_ds`通过图表的id与之关联，图表通过报警模板表id与之关联。
+这里先说一下需求：1. 每个图表（基本监控项）可由一个或多个数据源构成，每个图表可以有一个或多个报警条件，报警条件与图表中的监控项关联。而不同组相同的
+监控项可共用一个报警条件--即报警模板。2. 批量增删改报警；3. 单一增删改报警。
 
-因此，展示图表时，需要查询`t_monitor_chart`, `t_monitor_ds`和`t_monitor_ds_YYYYmmdd`；展示配置时，需要查询`t_chart_chart`，
-`t_monitor_ds`和`t_alarm_template`；而当需要报警时，需通过`t_monitor_chart`获取`t_alarm_template`的查询条件，然后根据chart_id
-和`t_alarm__template`的ds_name查询`t_monitor_ds`的id，再与`t_monitor_ds_YYYYmmdd`比较。
+因为监控依赖于数据，所以设计表t_monitor_template，其包括图表名、图表描述、该图表中的各数据源名和数据源描述、各数据源对应的监控。由于每个数据源
+可以有一个或多个监控，所以其以json字符串放在mysql中。每次添加完主机后，可选择关联该模板，这样数据源和监控都会添加。
 
-另外，对于`t_monitor_ds`，也可以通过新建模板`t_ds_template`来帮助其初始化。
+对于部分图表的数据源，其需要自定义添加监控。有两种方式，对于整个主机或实例新建一套监控模板，设置该值，这种方法改动太大，适用于多个图表同时改
+报警阈值的情况。另一种方法是重新建立单一监控项即可，这两种报警方式同zabbix的报警机制。
+
+由上述需求知，需要4个表满足条件：数据源定义表`t_monitor_ds`，图表`t_monitor_chart`，监控模板表`t_monitor_template`和数据源数据表
+`t_monitor_ds_YYYYmmdd`。其中`t_monitor_ds`通过图表id与图表关联，通过监控模板表id与报警关联。
+
+因此，展示图表时，需要查询`t_monitor_chart`, `t_monitor_ds`和`t_monitor_ds_YYYYmmdd`；展示配置时，需要查询`t_monitor_chart`，
+`t_monitor_ds`和`t_monitor_template`；而当需要报警时，先通过`t_monitor_ds`获取`t_monitor_template`的查询条件，再通过`t_monitor_ds`
+和`t_monitor_ds_YYYYmmdd`的取出当前值，比较该值与条件，若需要报警的话，查询`t_monitor_chart`发送报警。
+
+对于`t_monitor_ds`，也可以通过新建模板`t_ds_template`来帮助其初始化。
 
 ```
-                                   t_alarm_template
-                                         |   ^
-                                 ds_name |   |
-                                         |   | atid 
-                                         |   |
-                          chart_id       v   |         datasource_id
+                          chart_id                    datasource_id
        t_monitor_chart <------------ t_monitor_ds <--------------------- t_monitor_ds_YYYYmmdd
             ^                              ^
  chart_name |                              | ds_name
@@ -373,11 +375,9 @@ iid INT NOT NULL DEFAULT 0 COMMENT '三级id，类似各instance表id',
 creator INT NOT NULL DEFAULT 0 COMMENT '建表用户id',
 contacts VARCHAR(200) NOT NULL DEFAULT '' COMMENT '接警人id，以空格做分隔',
 alarm_status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否开启报警。开启：1，关闭：0',
-description VARCHAR(500) NOT NULL DEFAULT '' COMMENT '图表说明',
 updatetime timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 key idx_gid_iid (gid, iid),
 key idx_hid (hid),
-key idx_template_id (monitor_template_id)
 )ENGINE=INNODB DEFAULT CHARSET=utf8 COMMENT '监控图表信息'
 ```
 
@@ -391,7 +391,6 @@ key idx_template_id (monitor_template_id)
 CREATE TABLE t_monitor_ds (
 id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '数据源名称',
-description VARCHAR(200) NOT NULL DEFAULT '' COMMENT '描述',
 chart_id INT NOT NULL DEFAULT 0 COMMETN 't_monitor_chart的id',
 atid INT NOT NULL DEFAULT 0 COMMENT 't_monitor_template的id',
 alarm_status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否开启报警。开启：1，关闭：0',
@@ -400,7 +399,7 @@ INDEX idx_cid (chart_id)
 )ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT '监控数据源定义表';
 ```
 
-- 数据源模板  
+- 监控报警模板  
 
 一般而言，机器的物理监控基本相同，而各类型（如mysql，redis）的监控也基本相同。所以引入数据源模板。模板表用来批量生成监控
 图(`t_monitor_charts`)及其数据源表(`t_monitor_ds`)数据。
@@ -414,24 +413,10 @@ ds_description VARCHAR(200) NOT NULL DEFAULT '' COMMENT '数据源说明',
 chart_name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '图表名称',
 chart_description VARCHAR(200) NOT NULL DEFAULT '' COMMENT '图表说明',
 alarm_status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '该ds是否开启报警',
+alarm_condition VARCHAR(1000) NOT NULL DEFAULT '' COMMENT '报警设置。Json字符串。',
 updatetime timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 INDEX idx_name (name)
 )ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT '数据源模板表';
-```
-
-- 报警模板表
-
-表结构如下：
-
-```shell
-CREATE TABLE t_alarm_template (
-id INT NOT NULL AUTO_INCREMENAT PRIMARY KEY COMMENT '报警模板id',
-name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '报警模板名',
-ds_name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '数据源名',
-alarm_condition VARCHAR(1000) NOT NULL DEFAULT '' COMMENT '报警设置。Json字符串。',
-updatetime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-INDEX index_ds_name (ds_name)
-)ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT='监控模板表';
 ```
 
 `alarm_condition`是发送报警的条件，条件可以有多个，格式为'[{"time": "00:00-23:59", "mode": "1", "level": "warning",
@@ -447,10 +432,8 @@ INDEX index_ds_name (ds_name)
    流量     | 出口流量  | 1      | 5       | 0       | 3       | disaster|  1000  |         |
    流量     | 入口流量  | 1      | 5       | 0       | 3       | warning |  1000  |         | 
 
-这里说下将监控与生成图表分开的原因：对于监控而言，批量监控多于单个监控，若监控的阈值、间隔都放在单个监控项（即`t_monitor_ds`）中，当批量更新
-修改时，需要将`t_monitor_ds`中多个字段都修改，因此监控项放在template表中。在`t_alarm_template`中，若只需对一个监控添加监控项，
-添加一条记录即可，但其`name`需指定为空。
-
+该表的两个用途：1. 初始化chart表和ds表，2. 提供报警条件。初始化chart表和ds表后，这两个表的定义即与template无关，template只为这两个表提供监控
+条件。即之后某个图表的ds报警条件发生变化，只需要在template表中新建一条报警规则，其模板名可置为空，同时在ds表中修改template id即可。
 
 - 每日数据源表     
 
