@@ -1,0 +1,15 @@
+{% extends "config/base.html" %}
+
+{% block header %}
+    {% block subcss %}
+    {% endblock %}
+    <!--<link rel="stylesheet" href="{{ url_for('static', filename='css/asset.css') }}">-->
+{% endblock %}
+
+{% block cbc %}
+    <a class="active section" href="/config/">配置</a>
+{% endblock %}
+
+{% block maincontent %}
+config modules!
+{% endblock %}

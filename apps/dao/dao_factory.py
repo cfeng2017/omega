@@ -1,67 +1,76 @@
 from generic_dao import GenericDAO
-from apps.dao.asset.group_type_dao import GroupTypeDao
-from apps.dao.asset.group_db_dao import GroupDbDao
-from apps.dao.asset.group_dao import GroupDao
-from apps.dao.asset.host_dao import HostDao
-from apps.dao.asset.mysql_instance_dao import MysqlInstanceDao
-from apps.dao.asset.mc_instance_dao import McInstanceDao
-from apps.dao.asset.redis_instance_dao import RedisInstanceDao
+from apps.dao.asset.group_type_dao import GroupTypeDAO
+from apps.dao.asset.group_db_dao import GroupDbDAO
+from apps.dao.asset.group_dao import GroupDAO
+from apps.dao.asset.host_dao import HostDAO
+from apps.dao.asset.mysql_instance_dao import MysqlInstanceDAO
+from apps.dao.asset.mc_instance_dao import McInstanceDAO
+from apps.dao.asset.redis_instance_dao import RedisInstanceDAO
+from apps.dao.config.monitor_template_dao import MonitorTemplateDAO
 
 
-class GenericDaoFactory(object):
+class GenericDAOFactory(object):
 
     def __init__(self):
-        super(GenericDaoFactory, self).__init__()
+        super(GenericDAOFactory, self).__init__()
 
     @classmethod
     def new(cls):
         return GenericDAO()
 
 
-class GroupTypeDaoFactory(GenericDaoFactory):
+class GroupTypeDAOFactory(GenericDAOFactory):
 
     @classmethod
     def new(cls):
-        return GroupTypeDao()
+        return GroupTypeDAO()
 
 
-class GroupDbDaoFactory(GenericDaoFactory):
-
-    @classmethod
-    def new(cls):
-        return GroupDbDao()
-
-
-class GroupDaoFactory(GenericDaoFactory):
+class GroupDbDAOFactory(GenericDAOFactory):
 
     @classmethod
     def new(cls):
-        return GroupDao()
+        return GroupDbDAO()
 
 
-class HostDaoFactory(GenericDaoFactory):
-
-    @classmethod
-    def new(cls):
-        return HostDao()
-
-
-class MysqlInstanceDaoFactory(GenericDaoFactory):
+class GroupDAOFactory(GenericDAOFactory):
 
     @classmethod
     def new(cls):
-        return MysqlInstanceDao()
+        return GroupDAO()
 
 
-class McInstanceDaoFactory(GenericDaoFactory):
-
-    @classmethod
-    def new(cls):
-        return McInstanceDao()
-
-
-class RedisInstanceDaoFactory(GenericDaoFactory):
+class HostDAOFactory(GenericDAOFactory):
 
     @classmethod
     def new(cls):
-        return RedisInstanceDao()
+        return HostDAO()
+
+
+class MysqlInstanceDAOFactory(GenericDAOFactory):
+
+    @classmethod
+    def new(cls):
+        return MysqlInstanceDAO()
+
+
+class McInstanceDAOFactory(GenericDAOFactory):
+
+    @classmethod
+    def new(cls):
+        return McInstanceDAO()
+
+
+class RedisInstanceDAOFactory(GenericDAOFactory):
+
+    @classmethod
+    def new(cls):
+        return RedisInstanceDAO()
+
+
+class MonitorTemplateDAOFactory(GenericDAOFactory):
+
+    @classmethod
+    def new(cls):
+        return MonitorTemplateDAO()
+

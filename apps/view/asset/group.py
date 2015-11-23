@@ -1,4 +1,4 @@
-#! -*- coding: utf8 -*-
+# -*- coding: utf8 -*-
 from flask import render_template, request, flash, jsonify, redirect, url_for
 
 from apps.service.asset_service import AssetService

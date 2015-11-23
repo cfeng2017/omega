@@ -2,7 +2,7 @@ from apps import db
 from apps.dao.generic_dao import GenericDAO
 
 
-class InstanceDao(GenericDAO):
+class InstanceDAO(GenericDAO):
 
     @classmethod
     def find(cls):

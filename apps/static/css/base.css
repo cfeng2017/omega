@@ -49,7 +49,7 @@ a {
 }
 
 .header-url a:hover {
-    color: #FFFFFF;
+    color: #FFF;
 }
 
 .container {
@@ -135,8 +135,8 @@ footer {
     height: 2em;
     line-height: 2em;
     position: fixed;
-#    position: absolute;
     width: 100%;
+
     bottom: 0;
     z-index: 2;
     background-color: #333;
@@ -145,4 +145,79 @@ footer {
 .bottom-text {
     color: rgba(211, 211, 211, 0.5);
     text-align: center;
+}
+
+.ui.form textarea {
+   height: 4em;
+   min-height: 4em;
+   max-height: 8em;
+}
+
+.form-line {
+    overflow: hidden;
+}
+
+.form-label {
+    float: left;
+    font-weight: 700;
+    text-align: right;
+    width: 130px;
+    margin: 0.5em 0;
+}
+
+.form-content {
+    text-align: left;
+    margin-left: 150px;
+    overflow: hidden;
+}
+
+.content-line {
+    overflow: hidden;
+    text-align: left;
+    word-break: break-all;
+    margin: 0.5em 0;
+}
+
+.ui.form .content-line-text, .ui.form .content-line textarea,
+.ui.form .content-line input, .ui.form .content-line select {
+    max-width: 268px;
+    float: left;
+    margin-right: 18px;
+}
+
+.content-line-unit {
+    float: left;
+}
+
+.ui.form .content-line .ui-modal{
+    max-width: 120px;
+    float: left;
+}
+
+.content-line-btn {
+    background-color: #E0E0E0;
+
+    border: medium none;
+    border-radius: 4px;
+    cursor: pointer;
+    display: inline-block;
+    font-fmaily: Lato,'Helvetica Neue',Arial,Helvetica,sans-serif;
+    font-style: normal;
+    line-height: 1;
+    margin: 0 18px 0 0;
+    outline: 0 none;
+    padding: 0.785em 1.5em;
+    text-align: center;
+    text-decoration: none;
+    text-transform: none;
+    vertical-align: baseline;
+    font-size: 0.857em;
+    color: #000;
+
+    float: left;
+}
+
+.content-line a:hover {
+    color: #000;
+    background-color: #ADADAD;
 }

@@ -4,7 +4,7 @@ from apps.model.asset.host import Host
 from sqlalchemy import or_
 
 
-class HostDao(GenericDAO):
+class HostDAO(GenericDAO):
 
     @classmethod
     def find(cls):

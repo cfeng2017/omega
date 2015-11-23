@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-from wtforms import Form, StringField, validators, SubmitField, SelectMultipleField, DateTimeField, \
-    SelectField, FormField, TextAreaField, IntegerField, BooleanField, RadioField, widgets
+from wtforms import Form, StringField, validators, SubmitField, SelectMultipleField, \
+    SelectField, FormField, TextAreaField, IntegerField, RadioField, widgets
 
 
 class MultiCheckboxField(SelectMultipleField):

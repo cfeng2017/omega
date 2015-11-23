@@ -8,7 +8,7 @@ from apps.model.asset.group import Group
 from apps.model.asset.host import Host
 
 
-class MysqlInstanceDao(GenericDAO):
+class MysqlInstanceDAO(GenericDAO):
 
     @classmethod
     def find(cls):

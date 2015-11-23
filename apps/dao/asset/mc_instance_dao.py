@@ -7,7 +7,7 @@ from apps.model.asset.host import Host
 from apps.model.asset.group import Group
 
 
-class McInstanceDao(GenericDAO):
+class McInstanceDAO(GenericDAO):
 
     @classmethod
     def find(cls):

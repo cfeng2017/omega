@@ -1,0 +1,27 @@
+{% extends "config/base.html" %}
+
+{% block cbc %}
+    <a class="section" href="/config/">配置</a>
+    <div class="divider">/</div>
+    {% block tbc%}
+    {% endblock %}
+{% endblock %}
+
+{% block maincontent %}
+<div class="summary">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul class=flashes>
+            {% for category, message in messages %}
+              <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+
+    {% block form %}
+monitor_templates
+    {% endblock %}
+</div>
+{% endblock %}

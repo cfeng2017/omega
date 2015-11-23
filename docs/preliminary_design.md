@@ -107,16 +107,27 @@ Omega Preliminary Design
 
 ##### 目的
 
-这里先说一下需求：1. 每个图表（基本监控项）可由一个或多个数据源构成，每个图表可以有一个或多个报警条件，报警条件与图表中的监控项关联。而不同组相同的
-监控项可共用一个报警条件--即报警模板。2. 批量增删改报警；3. 单一增删改报警。
+这里先说一下需求：
 
-因为监控依赖于数据，所以设计表t_monitor_template，其包括图表名、图表描述、该图表中的各数据源名和数据源描述、各数据源对应的监控。由于每个数据源
-可以有一个或多个监控，所以其以json字符串放在mysql中。每次添加完主机后，可选择关联该模板，这样数据源和监控都会添加。
+1. 每个图表（基本监控项）可由一个或多个数据源构成，每个图表可以有一个或多个报警条件，报警条件与图表中的监控项关联。
+2. 因机器和同组类型实例，监控项和报警项基本相同，因此需要提供批量报警功能。
+3. 批量开/关某模板下所有机器报警；   
+4. 批量增删改，开/关某模板下某一数据源报警；   
+5. 单一开/关该机器所有报警；
+6. 单一增删改，开/关该机器下某一数据源报警。
 
-对于部分图表的数据源，其需要自定义添加监控。有两种方式，对于整个主机或实例新建一套监控模板，设置该值，这种方法改动太大，适用于多个图表同时改
 报警阈值的情况。另一种方法是重新建立单一监控项即可，这两种报警方式同zabbix的报警机制。
 
-由上述需求知，需要4个表满足条件：数据源定义表`t_monitor_ds`，图表`t_monitor_chart`，监控模板表`t_monitor_template`和数据源数据表
+模板可有多个，所以先设计模板t_monitor_name表，其只是存储模板名，即只有两个字段：主键id和模板名。
+
+再设计模板表t_monitor_template，其包括模板id(t_monitor_name)、图表名、图表描述、该图表中的各数据源名和数据源描述、各数据源对应的监控。由于每个数据源
+可以有一个或多个监控，所以其以json字符串放在mysql中。模板表用于初始化图表和监控，每次添加完主机后，选择关联该模板，这样数据源和监控都会添加。
+
+设计报警表，除基本报警字段外，其字段还应包括monitor_template_id(t_monitor_template的id)，monitor_name_id(t_monitor_name的id)和ds_id(ds的id)，这样，比较发送报警时，只需要根据ds_id查询该表和数据源具体表即可。对于需求3，相当于有了monitor_name_id，对该表monitor_name_id为该值做操作即可。对于需求4，相当于给出monitor_template_id。
+
+而对于需求5，6，在chart级别遍历关掉即可。
+
+由上分析知，需要如下表满足条件：数据源定义表`t_monitor_ds`，报警规则表`t_monitor_alarm`，图表`t_monitor_chart`，监控名表`t_monitor_name`，监控模板表`t_monitor_template`和数据源数据表
 `t_monitor_ds_YYYYmmdd`。其中`t_monitor_ds`通过图表id与图表关联，通过监控模板表id与报警关联。
 
 因此，展示图表时，需要查询`t_monitor_chart`, `t_monitor_ds`和`t_monitor_ds_YYYYmmdd`；展示配置时，需要查询`t_monitor_chart`，
@@ -399,6 +410,15 @@ INDEX idx_cid (chart_id)
 )ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT '监控数据源定义表';
 ```
 
+- 监控模板名表
+
+```shell
+CREATE TABLE t_monitor_name (
+id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+name VARCHAR(100) NOT NULL DEFAULT '' COMMENT '数据源模板表'
+)ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT '监控模板名表';
+```
+
 - 监控报警模板  
 
 一般而言，机器的物理监控基本相同，而各类型（如mysql，redis）的监控也基本相同。所以引入数据源模板。模板表用来批量生成监控
@@ -408,6 +428,7 @@ INDEX idx_cid (chart_id)
 CREATE TABLE t_monitor_template (
 id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 name VARCHART(50) NOT NULL DEFAULT '' COMMENT '数据源模板名',
+type SMALLINT NOT NULL DEFAULT 0 COMMMONT '监控对象的类型。0：None，1：组，2：主机，3：mysql实例，4：redis实例，5：mc实例',
 ds_name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '数据源名称',
 ds_description VARCHAR(200) NOT NULL DEFAULT '' COMMENT '数据源说明',
 chart_name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '图表名称',
@@ -419,6 +440,7 @@ INDEX idx_name (name)
 )ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT '数据源模板表';
 ```
 
+type定义监控对象的类型，如该模板的应用对象是组类型。该字段主要用于模板分类，当与监控对象关联时，初始化该值。
 `alarm_condition`是发送报警的条件，条件可以有多个，格式为'[{"time": "00:00-23:59", "mode": "1", "level": "warning",
  "threshold": 2000, "interval": 5, "last": 5}, {"time": "09:00-18:00", "mode": "3", "level": "disaster",
  "threshold": "30-40", "interval": 60, "last": 5}]'，time即报警时间段。mode即报警模式，分为上限模式，下限模式，范围模式，斜率模式，

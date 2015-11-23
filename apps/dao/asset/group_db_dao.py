@@ -4,7 +4,7 @@ from apps.model.asset.group_db import GroupDb
 from apps.model.asset.group import Group
 
 
-class GroupDbDao(GenericDAO):
+class GroupDbDAO(GenericDAO):
 
     @classmethod
     def find(cls):

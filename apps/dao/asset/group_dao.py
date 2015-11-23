@@ -3,7 +3,7 @@ from apps.dao.generic_dao import GenericDAO
 from apps.model.asset.group import Group
 
 
-class GroupDao(GenericDAO):
+class GroupDAO(GenericDAO):
 
     @classmethod
     def find(cls):

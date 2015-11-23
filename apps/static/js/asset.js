@@ -31,9 +31,9 @@ $(function(){
 //        defaultDate: new Date(1000, 12, 30),
 //       formatDate: 'Y-m-d',
 
-        defaultTime: '00:00:00',
-        formatTime: 'H:i:s',
-        format: 'Y-m-d H:i:s'
+        defaultTime: '00:00',
+        formatTime: 'H:i',
+        format: 'Y-m-d H:i'
 
     });
 

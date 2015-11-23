@@ -31,13 +31,12 @@ CLIENT_SECRET = '9xlo04722zx0ljtx8ig5r8pz2vhog2mh9apkycav'
 # blueprint
 from view import *
 
-# modules = {
-#     asset: 'asset',
-#     monitor: 'monitor'
-# }
-#
-# for k, v in modules.iteritems():
-#     apps.register_blueprint(k, url_prefix='/'+v)
+modules = {
+    'asset': asset,
+    'monitor': monitor,
+    'config': config
+}
 
-app.register_blueprint(asset, url_prefix='/asset')
-app.register_blueprint(monitor, url_prefix='/monitor')
+for k, v in modules.iteritems():
+    app.register_blueprint(v, url_prefix='/' + k)
+

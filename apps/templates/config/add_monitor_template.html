@@ -1,0 +1,245 @@
+{% extends "config/tbase.html" %}
+
+{% block tbc %}
+<a class="active section" href="/config/t/">模板</a>
+{% endblock %}
+
+{% block form %}
+<form action="/config/t/add_monitor_template/" class="ui form" id="tform" method="post">
+
+    <h4 class="ui dividing header">添加监控模板</h4>
+
+    <div class="form-line">
+        <label class="form-label">模板名:</label>
+        <div class="form-content">
+            <div class="content-line">
+                <select id="template_name" name="template_name">
+                {% for mt in mt_list %}
+                    <option>{{ mt }}</option>
+                {% endfor %}
+                </select>
+                <div>
+                    <a class="add_template content-line-btn">新建</a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="form-line">
+        <label class="form-label">图表名:</label>
+        <div class="form-content">
+            <div class="content-line">
+                <input type="text" name="chart_name" id="chart_name">
+            </div>
+        </div>
+    </div>
+
+    <div class="form-line">
+        <label class="form-label">图表描述:</label>
+        <div class="form-content">
+            <div class="content-line">
+                <textarea name="chart_desc" id="chart_desc"></textarea>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-line">
+        <label class="form-label">数据源:</label>
+        <div class="form-content" id="ds-list">
+            <div class="content-line">
+                <a class="content-line-btn add_ds" id="add_ds_items">添加</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-line">
+        <label class="form-label">报警规则:</label>
+        <div class="form-content">
+            <div class="content-line">
+                <a class="content-line-btn" id="add_rule">添加</a>
+            </div>
+        </div>
+    </div>
+
+    <input id="chart_template_sumbit" class="ui green button" type="submit" value="提交" name="chart_template_sumbit">
+</form>
+
+<div class="ui modal" id="template_name_modal">
+    <i class="close icon"></i>
+    <div class="header">新建模板名</div>
+    <div class="content">
+        <form action="/config/t/add_ds_template_name/" class="ui form" id="tnform" method="post">
+            <div style="overflow: auto;">
+                <label for="template_name">模板名: </label>
+                <div class="input_right"><input type="text" id="new_template_name" name="new_template_name"></div>
+            </div>
+            <p>已有数据源模板<p/>
+            <ul>
+               {% for mt in mt_list %}
+                    <li>{{ mt }}</li>
+                {% endfor %}
+            </ul>
+        </form>
+    </div>
+    <div class="actions">
+        <div class="ui cancel button">取消</div>
+        <div class="ui green approve button" id="add_modal_template_name_submit">提交</div>
+    </div>
+</div>
+
+<div class="ui modal" id="ds_name_modal">
+    <i class="close icon"></i>
+    <div class="header">新建数据源</div>
+    <div class="content">
+        <form class="ui form">
+            <div class="form-line">
+                <label class="form-label">数据源名:</label>
+                <div class="form-content">
+                    <div class="content-line">
+                        <input type="text" name="ds_name" id="ds_name">
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-line">
+                <label class="form-label">数据源说明:</label>
+                <div class="form-content">
+                    <div class="content-line">
+                        <textarea name="ds_desc" id="ds_desc"></textarea>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+    </div>
+    <div class="actions">
+        <div class="ui cancel button">取消</div>
+        <div class="ui green approve button" id="add_modal_ds_submit">提交</div>
+    </div>
+</div>
+
+<div class="ui modal" id="modify_ds_name_modal">
+    <i class="close icon"></i>
+    <div class="header">修改数据源</div>
+    <div class="content">
+        <form class="ui form">
+            <div class="form-line">
+                <label class="form-label">数据源名:</label>
+                <div class="form-content">
+                    <div class="content-line">
+                        <input type="text" name="ds_name" id="modify_ds_name">
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-line">
+                <label class="form-label">数据源说明:</label>
+                <div class="form-content">
+                    <div class="content-line">
+                        <textarea name="ds_desc" id="modify_ds_desc">cm</textarea>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+    </div>
+    <div class="actions">
+        <div class="ui cancel button">取消</div>
+        <div class="ui green approve button" id="modal_modify_tempsubmit">提交</div>
+    </div>
+</div>
+
+<div class="ui modal" id="alarm_rule_modal">
+    <i class="close icon"></i>
+    <div class="header">添加报警规则</div>
+    <div class="content">
+
+        <form class="ui form">
+            <div class="form-line">
+                <div id="msg">
+                    阈值上限必须不小于阈值下限！！
+                </div>
+            </div>
+
+            <div class="form-line">
+                <label class="form-label">数据源:</label>
+                <div class="form-content">
+                    <div class="content-line">
+                        <select class="ui-modal" id="modal_ds">
+
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-line">
+                <label class="form-label">报警类型:</label>
+                <div class="form-content">
+                    <div class="content-line">
+                        <select id="threshold_type" class="ui-modal">
+                            <option value="1" selected="selected">上限模式</option>
+                            <option value="2">下限模式</option>
+                            <option value="3">范围模式</option>
+                            <option value="4">斜率模式</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-line">
+                <label class="form-label">警告阈值:</label>
+                <div class="form-content">
+                    <div class="content-line" id="warn">
+                        <input type="text" class="ui-modal" name="warn_lower" id="warn_lower">
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-line">
+                <label class="form-label">灾难阈值:</label>
+                <div class="form-content">
+                    <div class="content-line" id="disaster">
+                        <input type="text" class="ui-modal" id="disaster_lower" name="disaster_lower">
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-line">
+                <label class="form-label">持续时间:</label>
+                <div class="form-content">
+                    <div class="content-line">
+                        <input type="text" class="ui-modal" id="last_time" name="last_time">
+                        <div class="content-line-unit">分钟</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-line">
+                <label class="form-label">报警间隔:</label>
+                <div class="form-content">
+                    <div class="content-line">
+                        <input type="text" class="ui-modal" id="interval_time" name="interval_time">
+                        <div class="content-line-unit">分钟</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-line">
+                <label class="form-label">报警时间:</label>
+                <div class="form-content">
+                    <div class="content-line">
+                        <input type="text" class="ui-modal time-picker" name="begin_time" id="begin_time">
+                        <input type="text" class="ui-modal time-picker" name="end_time" id="end_time">
+                    </div>
+                </div>
+            </div>
+
+        </form>
+    </div>
+    <div class="actions">
+        <div class="ui cancel button">取消</div>
+        <div class="ui green approve button" id="add_modal_template_submit">提交</div>
+    </div>
+</div>
+{% endblock %}

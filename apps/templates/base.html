@@ -19,8 +19,8 @@
 
         <div class="item ui category search">
             <div class="ui icon input">
-                <input class="prompt" type="text" placeholder="Search" id="header_search">
-                <i class="search icon"></i>
+                <input class="prompt" type="text" placeholder="Search" id="site_search">
+                <i class="search icon" id="site_search_icon"></i>
             </div>
             <div class="results"></div>
         </div>
@@ -95,24 +95,31 @@
                 </div>
             </div>
 
-            <div class="item">
-                <a class="header" href="/archive">
-                    <i class="archive icon"></i>
-                    <span>归档</span>
-                </a>
-            </div>
-
-            <!--<a class="item" href="/slow/">-->
-                <!--<i class="unhide icon"></i>-->
-                <!--<span></span>-->
-            <!--</a>-->
+            <!--<div class="item">-->
+                <!--<a class="header" href="/archive">-->
+                    <!--<i class="archive icon"></i>-->
+                    <!--<span>归档</span>-->
+                <!--</a>-->
+            <!--</div>-->
 
             <div class="item">
-                <a class="header" href="/lab/">
-                    <i class="lab icon"></i>
-                    <span>Lab</span>
+                <a class="header"  href="/config/">
+                    <i class="configure icon"></i>
+                    <span>配置</span>
                 </a>
+                <div class="menu">
+                    <a class="item" href="/config/t/">模板</a>
+                  <!--<a class="item" href="/asset/h/">Host</a>-->
+                  <!--<a class="item" href="/asset/i/">Instance</a>-->
+                </div>
             </div>
+
+            <!--<div class="item">-->
+                <!--<a class="header" href="/lab/">-->
+                    <!--<i class="lab icon"></i>-->
+                    <!--<span>Lab</span>-->
+                <!--</a>-->
+            <!--</div>-->
         </div>
     </div>
 
@@ -134,7 +141,7 @@
         <big>Omega&nbsp;&nbsp;&copy;DB</big>
     </div>
 </footer>
-
+<script src="{{ url_for('static', filename='js/search.js') }}"></script>
 {% block scripts %}
 {% endblock %}
 </body>

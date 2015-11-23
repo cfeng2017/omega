@@ -1,0 +1,47 @@
+{% extends "config/tbase.html" %}
+
+{% block tbc %}
+<a class="active section" href="/config/t/">模板</a>
+{% endblock %}
+
+{% block form %}
+
+<!--<div class="ui top attached tabular menu">-->
+  <!--<a class="item active" data-tab="chart">图模板</a>-->
+  <!--<a class="item" data-tab="alarm">报警模板</a>-->
+<!--</div>-->
+
+<!--<div class="ui bottom attached tab segment active" data-tab="chart">-->
+    <!--<div>-->
+        <!--<a class="ui blue button" href="/config/t/add_monitor_template/">新建</a>-->
+    <!--</div>-->
+<!--</div>-->
+
+<!--<div class="ui bottom attached tab segment" data-tab="alarm">-->
+    <!--<div>-->
+        <!--<a class="ui blue button" href="/config/t/add_alarm_template/">新建</a>-->
+    <!--</div>-->
+<!--</div>-->
+
+<a class="ui blue button" href="/config/t/add_monitor_template/">新建</a>
+<a class="ui blue button" href="/config/t/monitor_template_info/">查看报警模板</a>
+
+<table class="ui celled structured table">
+  <thead>
+    <tr>
+      <th>类型</th>
+      <th>模板名</th>
+      <th>操作</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for info in infos %}
+    <tr>
+        <td>{{info.type}}</td>
+        <td>{{info.name}}</td>
+        <td><button>操作</button></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
