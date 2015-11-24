@@ -1,0 +1,32 @@
+{% extends "config/tbase.html" %}
+
+{% block tbc %}
+<a class="active section" href="/config/t/">模板</a>
+{% endblock %}
+
+{% block form %}
+<form action="/config/t/add_monitor_template_type/" class="ui form" id="tform" method="post">
+    <h4 class="ui dividing header">添加监控模板类型</h4>
+
+    <div class="form-line">
+        <label class="form-label">模板类型:</label>
+        <div class="form-content">
+            <div class="content-line">
+                <input type="text" name="mtype">
+            </div>
+        </div>
+    </div>
+
+    <div class="form-line">
+        <label class="form-label">模板名:</label>
+        <div class="form-content">
+            <div class="content-line">
+                <input type="text" name="name">
+            </div>
+        </div>
+    </div>
+
+    <input id="monitor_type_sumbit" class="ui green button" type="submit" value="提交">
+
+</form>
+{% endblock %}
