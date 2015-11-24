@@ -384,7 +384,7 @@ gid INT NOT NULL DEFAULT 0 COMMENT 'group id',
 hid INT NOT NULL DEFAULT 0 COMMENT '二级id，类似host id，业务id等',
 iid INT NOT NULL DEFAULT 0 COMMENT '三级id，类似各instance表id',
 creator INT NOT NULL DEFAULT 0 COMMENT '建表用户id',
-contacts VARCHAR(200) NOT NULL DEFAULT '' COMMENT '接警人id，以空格做分隔',
+receiver VARCHAR(200) NOT NULL DEFAULT '' COMMENT '接警人id，以空格做分隔',
 alarm_status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否开启报警。开启：1，关闭：0',
 create_time timestamp NOT NULL DEfAULT '0000-00-00 00:00:00' COMMENT '建图日期',
 updatetime timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -404,10 +404,10 @@ CREATE TABLE t_monitor_ds (
 id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '数据源名称',
 chart_id INT NOT NULL DEFAULT 0 COMMETN 't_monitor_chart的id',
-atid INT NOT NULL DEFAULT 0 COMMENT 't_monitor_template的id',
-alarm_status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否开启报警。开启：1，关闭：0',
+monitor_template_id INT NOT NULL DEFAULT 0 COMMENT 't_monitor_template的id',
 updatetime timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-INDEX idx_cid (chart_id)
+INDEX idx_cid (chart_id),
+INDEX idx_mtid (monitor_template_id)
 )ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT '监控数据源定义表';
 ```
 
