@@ -3,18 +3,17 @@ from apps import db
 
 
 class Chart(db.Model):
-    __tablename__ = 't_chart'
+    __tablename__ = 't_monitor_chart'
 
     id = db.Column(db.Integer, primary_key=True)
-    ds_name = db.Column(db.String(50), nullable=False, default='', doc='数据源名称')
     chart_name = db.Column(db.String(50), nullable=False, default='', doc='图表名称')
     gid = db.Column(db.Integer, nullable=False, default=0, doc='组id')
     hid = db.Column(db.Integer, nullable=False, default=0, doc='host id')
     iid = db.Column(db.Integer, nullable=False, default=0, doc='实例id')
-    creator = db.Column(db.String(50), nullable=False, default='', doc='建表用户名')
-    contacts = db.Column(db.String(200), nullable=False, default='', doc='联系人id，多个联系人以空格分隔')
+    creator = db.Column(db.Integer, nullable=False, default=0, doc='建表用户id')
+    receiver = db.Column(db.String(200), nullable=False, default='', doc='接警人id，多个联系人以空格分隔')
     alarm_status = db.Column(db.Boolean, nullable=False, default=0, doc='是否开启报警，关闭：0，开启：1')
-    monitor_template_id = db.Column(db.Integer, nullable=False, default=0, doc='t_monitor_template的id')
+    create_time = db.Column(db.DateTime, nullauble=False, default='', doc='建图日期')
     updatetime = db.Column(db.TIMESTAMP, nullable=False, server_default=db.FetchedValue(),
                            server_onupdate=db.FetchedValue())
 

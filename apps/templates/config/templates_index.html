@@ -22,11 +22,10 @@
         <!--<a class="ui blue button" href="/config/t/add_alarm_template/">新建</a>-->
     <!--</div>-->
 <!--</div>-->
+<a class="ui blue button" href="/config/t/add_monitor_template_type/">新建模板类型</a>
+<!--<a class="ui blue button" href="/config/t/monitor_template_info/">查看报警模板</a>-->
 
-<a class="ui blue button" href="/config/t/add_monitor_template/">新建</a>
-<a class="ui blue button" href="/config/t/monitor_template_info/">查看报警模板</a>
-
-<table class="ui celled structured table">
+<table class="ui celled structured table" id="template_info_table">
   <thead>
     <tr>
       <th>类型</th>
@@ -38,8 +37,29 @@
   {% for info in infos %}
     <tr>
         <td>{{info.type}}</td>
-        <td>{{info.name}}</td>
-        <td><button>操作</button></td>
+        <td>
+            {% for name in info.names %}
+            <a href="/config/t/monitor_template_info/?tid={{name[0]}}&name={{name[1]}}">{{ name[1] }}</a> &emsp;
+            {% endfor %}
+        </td>
+        <td>
+            <!--<div class="ui dropdown">-->
+                <!--<div class="text">操作</div>-->
+                <!--<i class="dropdown icon"></i>-->
+                <!--<div class="menu">-->
+                    <!--<div class="item">新建</div>-->
+                    <!--<div class="item">-->
+                    <!--修改-->
+                    <!--</div>-->
+                    <!--<div class="item">-->
+                        <!--删除-->
+                    <!--</div>-->
+                <!--</div>-->
+            <!--</div>-->
+            <a class="ui blue button" href="/config/t/add_monitor_template/?type={{info.type}}">新建</a>
+            <a class="ui blue button" href="/config/t/modify_monitor_template/">修改</a>
+            <a class="ui blue button" href="/config/t/del_monitor_template">删除</a>
+        </td>
     </tr>
   {% endfor %}
   </tbody>

@@ -15,7 +15,7 @@
             <div class="content-line">
                 <select id="template_name" name="template_name">
                 {% for mt in mt_list %}
-                    <option>{{ mt }}</option>
+                    <option value="{{ mt[0] }}">{{ mt[1] }}</option>
                 {% endfor %}
                 </select>
                 <div>
@@ -69,7 +69,7 @@
     <i class="close icon"></i>
     <div class="header">新建模板名</div>
     <div class="content">
-        <form action="/config/t/add_ds_template_name/" class="ui form" id="tnform" method="post">
+        <form action="/config/t/add_ds_template_name/?type={{monitor_type}}" class="ui form" id="tnform" method="post">
             <div style="overflow: auto;">
                 <label for="template_name">模板名: </label>
                 <div class="input_right"><input type="text" id="new_template_name" name="new_template_name"></div>
@@ -77,7 +77,7 @@
             <p>已有数据源模板<p/>
             <ul>
                {% for mt in mt_list %}
-                    <li>{{ mt }}</li>
+                    <li>{{ mt[1] }}</li>
                 {% endfor %}
             </ul>
         </form>
@@ -174,7 +174,7 @@
             </div>
 
             <div class="form-line">
-                <label class="form-label">报警类型:</label>
+                <label class="form-label">报警模式:</label>
                 <div class="form-content">
                     <div class="content-line">
                         <select id="threshold_type" class="ui-modal">

@@ -5,6 +5,15 @@
 {% endblock %}
 
 {% block form %}
-121212
+<p5>{{name}}</p5>
+<br/>
+
+<ul>
+{% for info in infos %}
+<li>
+    {{ info[1] }}, {{info[2]}}, {{ info[3] }}, {{ info[4] }}
+</li>
+{% endfor %}
+</ul>
 
 {% endblock %}

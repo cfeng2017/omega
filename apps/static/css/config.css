@@ -27,3 +27,7 @@ form table {
     display: none;
     text-align: left;
 }
+
+#template_info_table {
+    margin-bottom: 6.8em;
+}
