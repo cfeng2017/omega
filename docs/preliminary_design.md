@@ -138,60 +138,60 @@ Omega Preliminary Design
 由于同一模板中chart name不同，同一模板同一chart中ds name不同，所以当通过模板增删改Chart信息时，可根据template_name_id和chart_name来唯一
 标识chart；通过Template表中的template_name_id, chart_name, ds_name来唯一标识ds，对于Alarm关联template的id，修改起来会方便很多。
 
-- 初始化
+###### 初始化
 1. 根据模板名，获取模板信息
 2. 初始化Chart表
 3. 查询指定监控项（如gid，hid等）的Chart表，对比模板信息（chart_name和template_name_id），初始化Datasource表
 4. 查询指定chart的Datasource表，对比模板信息（chart_name和ds_name），初始化报警表
 
-- 新建模板的chart信息
+###### 新建模板的chart信息
 1. Template表添加chart
 2. Chart表中根据目标监控项，Template_name_id和chart名添加chart
 3. 查询添加的chart id，name
 4. 对比chart name和模板chart_name，添加Ds信息
 4. 添加Alarm表
 
-- 修改模板的chart信息
+###### 修改模板的chart信息
 1. 修改模板中chart信息
 2. 通过template_name_id和原始chart_name修改Chart表信息
 
-- 删除模板的chart信息
+###### 删除模板的chart信息
 1. Alarm删除
 2. ds删除
 3. Chart删除
 4. 模板删除
 
-- 新建模板的ds信息
+###### 新建模板的ds信息
 1. 在Template表添加项
 2. 查询Chart表中template_name_id为该模板名id，chart_name为目标chart_name的Chart表id
 3. 插入ds表
 4. 监控表
 
-- 修改模板的Ds信息
+###### 修改模板的Ds信息
 
 
-- 删除模板的ds信息
+###### 删除模板的ds信息
 1. Alarm删除
 2. ds删除
 3. Chart删除
 4. 模板删除
 
-- 添加模板的报警规则
+###### 添加模板的报警规则
 
-- 修改模板的报警规则
+###### 修改模板的报警规则
 
-- 删除模板的报警无则
+###### 删除模板的报警无则
 
-- 关掉同一模板下所有机器报警
+###### 关掉同一模板下所有机器报警
 
-- 关掉同一模板下某Chart报警
+###### 关掉同一模板下某Chart报警
 
 在Alarm表中查询模板名(template_id)，Ds为Chart子项的为目标模板的项，将报警状态（status）置为0（关闭状态）即可
 
-- 关掉同一模板下某Ds报警
+###### 关掉同一模板下某Ds报警
 在Alarm表中查询模板名(template_id)为目标模板的项，将报警状态（status）置为0（关闭状态）即可
 
-- 目标监控项重新关联模板
+###### 目标监控项重新关联模板
 1. 查询Chart表中目标监控项的各项id（目标chart_id集合）
 2. 通过“目标chart_id集合”，查询Ds表中各项id（目标ds_id集合）
 3. 删除Alarm表中ds_id在“目标ds_id集合”中所有项
