@@ -130,7 +130,7 @@ Omega Preliminary Design
 因此，展示图表时，需要查询`t_monitor_chart`, `t_monitor_ds`和`t_monitor_ds_YYYYmmdd`；展示配置时，需要查询`t_monitor_chart`，
 `t_monitor_ds`和`t_monitor_alarm`；而当需要报警时，比较`t_monitor_alarm`和`t_monitor_ds_YYYYmmdd`即可。
 
-![监控图](../images/monitor_and_alarm.jpg)
+![监控图](images/monitor_and_alarm.jpg)
 
 ##### 实现
 模板表有2个功能：一是初始化图表，数据源表，报警表；二是修改这些表的信息。
