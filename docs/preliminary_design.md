@@ -63,12 +63,7 @@ Omega Preliminary Design
 全系统使用的软件及版本如下：
 
 - Python2.7
-- Django==1.6.5
 - Flask-0.10.1 
-- Jinja2-2.8 
-- MarkupSafe-0.23 
-- Werkzeug-0.10.4 
-- itsdangerous-0.24
 - Flask-SQLAlchemy-2.0
 - WTForms-2.0.2(flask-wtf-0.12)
 - requests-2.7.0
@@ -116,35 +111,106 @@ Omega Preliminary Design
 5. 单一开/关该机器所有报警；
 6. 单一增删改，开/关该机器下某一数据源报警。
 
-报警阈值的情况。另一种方法是重新建立单一监控项即可，这两种报警方式同zabbix的报警机制。
+##### 分析
+对于批量实现，需要建立模板表，并可以用于初始化图表，数据源表和报警表的定义。而模板可有多个，所以先设计模板t_monitor_template_name表，
+其只是存储模板名，即只有两个字段：主键id和模板名。
 
-模板可有多个，所以先设计模板t_monitor_name表，其只是存储模板名，即只有两个字段：主键id和模板名。
-
-再设计模板表t_monitor_template，其包括模板id(t_monitor_name)、图表名、图表描述、该图表中的各数据源名和数据源描述、各数据源对应的监控。由于每个数据源
+设计模板表t_monitor_template，其包括模板id(t_monitor_name)、图表名、图表描述、该图表中的各数据源名和数据源描述、各数据源对应的监控。由于每个数据源
 可以有一个或多个监控，所以其以json字符串放在mysql中。模板表用于初始化图表和监控，每次添加完主机后，选择关联该模板，这样数据源和监控都会添加。
 
-设计报警表，除基本报警字段外，其字段还应包括monitor_template_id(t_monitor_template的id)，monitor_name_id(t_monitor_name的id)和ds_id(ds的id)，这样，比较发送报警时，只需要根据ds_id查询该表和数据源具体表即可。对于需求3，相当于有了monitor_name_id，对该表monitor_name_id为该值做操作即可。对于需求4，相当于给出monitor_template_id。
+设计报警表，除基本报警字段外，其字段还应包括template_id(t_monitor_template的id)和ds_id(ds的id)，这样
+，发送报警时，只需要根据ds_id查询该表和数据源具体表即可。为方便比较，该表应有报警开启/关闭状态，发送报警时，只比较报警状态
+开启的报警。
 
 而对于需求5，6，在chart级别遍历关掉即可。
 
-由上分析知，需要如下表满足条件：数据源定义表`t_monitor_ds`，报警规则表`t_monitor_alarm`，图表`t_monitor_chart`，监控名表`t_monitor_name`，监控模板表`t_monitor_template`和数据源数据表
-`t_monitor_ds_YYYYmmdd`。其中`t_monitor_ds`通过图表id与图表关联，通过监控模板表id与报警关联。
+由上分析知，需要如下表满足条件：数据源定义表`t_monitor_ds`，报警规则表`t_monitor_alarm`，图表`t_monitor_chart`，监控名表`t_monitor_template_name`，
+监控模板表`t_monitor_template`和数据源数据表`t_monitor_ds_YYYYmmdd`。其中`t_monitor_ds`通过图表id与图表关联。
 
 因此，展示图表时，需要查询`t_monitor_chart`, `t_monitor_ds`和`t_monitor_ds_YYYYmmdd`；展示配置时，需要查询`t_monitor_chart`，
-`t_monitor_ds`和`t_monitor_template`；而当需要报警时，先通过`t_monitor_ds`获取`t_monitor_template`的查询条件，再通过`t_monitor_ds`
-和`t_monitor_ds_YYYYmmdd`的取出当前值，比较该值与条件，若需要报警的话，查询`t_monitor_chart`发送报警。
+`t_monitor_ds`和`t_monitor_alarm`；而当需要报警时，比较`t_monitor_alarm`和`t_monitor_ds_YYYYmmdd`即可。
 
-对于`t_monitor_ds`，也可以通过新建模板`t_ds_template`来帮助其初始化。
+![监控图](../images/monitor_and_alarm.jpg)
+
+##### 实现
+模板表有2个功能：一是初始化图表，数据源表，报警表；二是修改这些表的信息。
+
+由于同一模板中chart name不同，同一模板同一chart中ds name不同，所以当通过模板增删改Chart信息时，可根据template_name_id和chart_name来唯一
+标识chart；通过Template表中的template_name_id, chart_name, ds_name来唯一标识ds，对于Alarm关联template的id，修改起来会方便很多。
+
+- 初始化
+1. 根据模板名，获取模板信息
+2. 初始化Chart表
+3. 查询指定监控项（如gid，hid等）的Chart表，对比模板信息（chart_name和template_name_id），初始化Datasource表
+4. 查询指定chart的Datasource表，对比模板信息（chart_name和ds_name），初始化报警表
+
+- 新建模板的chart信息
+1. Template表添加chart
+2. Chart表中根据目标监控项，Template_name_id和chart名添加chart
+3. 查询添加的chart id，name
+4. 对比chart name和模板chart_name，添加Ds信息
+4. 添加Alarm表
+
+- 修改模板的chart信息
+1. 修改模板中chart信息
+2. 通过template_name_id和原始chart_name修改Chart表信息
+
+- 删除模板的chart信息
+1. Alarm删除
+2. ds删除
+3. Chart删除
+4. 模板删除
+
+- 新建模板的ds信息
+1. 在Template表添加项
+2. 查询Chart表中template_name_id为该模板名id，chart_name为目标chart_name的Chart表id
+3. 插入ds表
+4. 监控表
+
+- 修改模板的Ds信息
+
+
+- 删除模板的ds信息
+1. Alarm删除
+2. ds删除
+3. Chart删除
+4. 模板删除
+
+- 添加模板的报警规则
+
+- 修改模板的报警规则
+
+- 删除模板的报警无则
+
+- 关掉同一模板下所有机器报警
+
+- 关掉同一模板下某Chart报警
+
+在Alarm表中查询模板名(template_id)，Ds为Chart子项的为目标模板的项，将报警状态（status）置为0（关闭状态）即可
+
+- 关掉同一模板下某Ds报警
+在Alarm表中查询模板名(template_id)为目标模板的项，将报警状态（status）置为0（关闭状态）即可
+
+- 目标监控项重新关联模板
+1. 查询Chart表中目标监控项的各项id（目标chart_id集合）
+2. 通过“目标chart_id集合”，查询Ds表中各项id（目标ds_id集合）
+3. 删除Alarm表中ds_id在“目标ds_id集合”中所有项
+4. 删除Ds中id为“目标ds_id集合”的项
+5. 删除Chart中id为“目标chart_id集合”的项
+6. 初始化Chart表，Ds表，监控表（见初始化步骤）
 
 ```
-                          chart_id                    datasource_id
-       t_monitor_chart <------------ t_monitor_ds <--------------------- t_monitor_ds_YYYYmmdd
-            ^                              ^
- chart_name |                              | ds_name
- chart_desc |                              | ds_desc 
-            |                              | alarm_status
-     t_monitor_template -------------------|          
-     
+                                              t_monitor_ds_YYYYmmdd
+                                                        |
+                                                        | ds_id
+                               chart_id                 v           ds_id
+       t_monitor_chart <-------------------------- t_monitor_ds <------------ t_monitor_alarm 
+            |                                           |
+            | t_template_name_id                        | 
+            |                                           |  
+            v                                           v 
+ t_monitor_template_name <----------------------- t_monitor_template          
+                             t_template_name_id
 ```
 
 ##### 自定义监控说明
@@ -190,7 +256,8 @@ Omega Preliminary Design
 ManagementCenter是配置管理中心。
 
 - 查看机器角色
-对于Mysql/redis，有Master/Slave之分，且该角色定义在端口上。但对于Hadoop而言，其角色名为NameNode/SecondNameNode/DataNode，一个主机也可同时做NameNode和DataNode，角色定位在主机上。Hbase角色为HMaster/RegionServer，角色定位在主机上。
+对于Mysql/redis，有Master/Slave之分，且该角色定义在端口上。但对于Hadoop而言，其角色名为NameNode/SecondNameNode/DataNode，
+一个主机也可同时做NameNode和DataNode，角色定位在主机上。Hbase角色为HMaster/RegionServer，角色定位在主机上。
 
 #### 搜索
 搜索常有的几种需求如下：
@@ -200,16 +267,22 @@ ManagementCenter是配置管理中心。
 - 查看机器的监控
 - 查看机器的slow
 
-这里不考虑全文索引。目前所使用的方式是在相应表中再加一个字段，如对于查找db所在组的需求，其实现方法是在group表中加一个`db`字段，用以存放每个group对应的db，查询时使用 `WHERE db LIKE %key%` 的方式来实现。此方案对字段限制过于严格，只能满足对这一字段的搜索，对于其他字段的搜索还需另写SQL语句，不太适合全局搜索。
+这里不考虑全文索引。目前所使用的方式是在相应表中再加一个字段，如对于查找db所在组的需求，其实现方法是在group表中加一个`db`字段，用以存放每个group
+对应的db，查询时使用 `WHERE db LIKE %key%` 的方式来实现。此方案对字段限制过于严格，只能满足对这一字段的搜索，对于其他字段的搜索还需另写SQL语
+句，不太适合全局搜索。
 
-另外一种方案仍是每个表中再新加一个字段`search_field`，该字段存放的值是每行所有字段（不包括`search`字段本身）的合集，各字段之间以某一个delimiter分隔。查询时使用`WHERE search_field LIKE %key%`来实现。该方法能消除前一方法的限制，但仍有一些缺点。
+另外一种方案仍是每个表中再新加一个字段`search_field`，该字段存放的值是每行所有字段（不包括`search`字段本身）的合集，各字段之间以某一
+个delimiter分隔。查询时使用`WHERE search_field LIKE %key%`来实现。该方法能消除前一方法的限制，但仍有一些缺点。
 
 - 数据冗余
 - `LIKE %key%` 不能使用索引，且匹配多余数据，如 `LIKE %property_db%`，除了匹配 `propertys_db`，还会匹配`propertys_db_04`
-- 不能满足同时有多个匹配的情况，即使满足多个匹配的情况，但匹配词序固定，对于`condition1 condition2`，只能是`LIKE %condition1%condition2%`，对于`condition2 condition1`的情况无法匹配出来。
+- 不能满足同时有多个匹配的情况，即使满足多个匹配的情况，但匹配词序固定，对于`condition1 condition2`，只能是`LIKE %condition1%condition2%`，
+对于`condition2 condition1`的情况无法匹配出来。
 - 无法自适应控制结果的重要顺序。对于所有结果返回的顺序一样，无法自适应调整优先级。
 
-还有一种做法是建立一个搜索表，每次增删改时，同时更新搜索表。其方法为将需要搜索的字段都放在该表中，能满足多字段的搜索，同时能做到根据结果重要性排序返回。在使用该方法时，不希望使用 `LIKE`的方式，使用在搜索输入框中会用redis/jquery来做自动完成的功能。该方法的缺点是对于少部分情况会出现搜索不到的情况，不过对于这种情况，可以将待搜索字段加入到搜索表中即可。
+还有一种做法是建立一个搜索表，每次增删改时，同时更新搜索表。其方法为将需要搜索的字段都放在该表中，能满足多字段的搜索，同时能做到根据结果重要性排序
+返回。在使用该方法时，不希望使用 `LIKE`的方式，使用在搜索输入框中会用redis/jquery来做自动完成的功能。该方法的缺点是对于少部分情况会出现搜索不
+到的情况，不过对于这种情况，可以将待搜索字段加入到搜索表中即可。
 
 当然，还可以开源的一些工具，如 solr, nutch, elasticsearch 等，这些工具对查询级别为千万以上表现良好，但增加了维护成本。
 
@@ -280,13 +353,14 @@ id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 host VARCHAR(32) NOT NULL DEFAULT '' COMMENT '主机名',
 cores INT NOT NULL DEFAULT 0 COMMENT 'cpu核数',
 memory INT NOT NULL DEFAULT 0 COMMENT '内存大小，以G为单位'
-disk VARCHAR(200) NOT NULL DEFAULT 0 COMEMNT '磁盘信息，json字符串，以[{'type': 'SAS', 'num': 4, 'size': 300}]的形式存储', 
+disk VARCHAR(200) NOT NULL DEFAULT 0 COMEMNT '磁盘信息，json字符串，以[{'type': 'SAS', 'num': 4, 'size': 300, 'raid': 10}]的形式存储', 
 raid  SMALLINT NOT NULL DEFAULT 0 COMMENT '主要磁盘的raid级别，不包括系统盘',
 eth VARCHAR(10) NOT NULL DEFAULT '' COMMENT '主要网卡设备名，如eth0, em0等',
 ip VARCHAR(192) NOT NULL DEFAULT '' COMMENT '主ip',
-oips VARCHAR(192) NOT NULL DEFAULT '' COMMENT '其他网卡信息，包括虚拟ip。json字符串，以[{'network': 'eth1', 'ip': '10.10.3.2'}]'的形式存储,
+oips VARCHAR(192) NOT NULL DEFAULT '' COMMENT '其他网卡信息。json字符串，以[{'network': 'eth1', 'ip': '10.10.3.2'}]'的形式存储,
+vips VARCHAR(192) NOT NULL DEFAULT '' COMMENT '虚拟ip。json字符串，以[{'network': 'eth0:1', 'vip': '10.10.3.2'}
 remote_ip VARCHAR(32) NOT NULL DEFAULT '' COMMENT '远程控制卡IP',
-idc TINYINT NOT NULL DEFAULT 0 COMMENT '机房位置, IDC10: 0, IDC20: 1',
+idc TINYINT NOT NULL DEFAULT 0 COMMENT '机房位置,天津机房:1, IDC10: 2, IDC20: 3',
 rack VARCHAR(20) NOT NULL DEFAULT '' COMMENT '机架位置',
 bbu_relearn_flag TINYINT(1) NOT NULL DEFAULT 0 COMMENT '电池充放电。不手动充放:0，手动充放:1',
 bbu_relearn_date TIMESTAMP NOT NULL DEFAULT '0000-00-00' COMMENT '下次充放电日期',
@@ -296,6 +370,8 @@ updatetime TIMESTAMP NOT NULL DEFAUTL CURRENT_TIMESTAMP ON UP CURRENT_TIMESTAMP,
 index idx_host host,
 )ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT='所有主机相关信息';
 ```
+
+当使用数字表示是/否，在/不在时，使用0和1，若有多种状态，则使用1，2，3，...。
 
 对于`disk_num`和`disk_size`的设计思路来源于部分机器可能有2块300G的磁盘做系统盘，有2块2T的磁盘做数据盘，此时`disk_num`存储字段为`2 6`，
 `disk_size`则存储`600 40960`。
@@ -310,10 +386,9 @@ id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 gid INT NOT NULL DEFAULT 0 COMMENT '组id',
 hid INT NOT NULL DEFAULT 0 COMMENT 'host_id',
 port SMALLINT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'port号',
-ip VARCHAR(256) NOT NULL DEFAULT '' COMMENT 'port对应的ip',
 version VARCHAR(10) NOT NULL DEFAULT '' COMMENT '版本',
 role TINYINT(1) NOT NULL DEFAULT 0 COMMENT '角色。master: 1, slave: 2',
-status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '状态。online: 1, offline: 2',
+status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '状态。online: 1, offline: 0',
 remark VARCHAR(200) NOT NULL DEFAULT '' COMMENT '备注, 如用做backup或etl等',
 updatetime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 KEY idx_id(gid, hid)
@@ -332,12 +407,11 @@ id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 gid INT NOT NULL DEFAULT 0 COMMENT '组id',
 hid INT NOT NULL DEFAULT 0 COMMENT 'host_id',
 port SMALLINT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'port号',
-ip VARCHAR(256) NOT NULL DEFAULT '' COMMENT 'port对应的ip',
 memory VARCHAR(20) NOT NULL DEFAULT '' COMMENT '分配内存',
 version VARCHAR(10) NOT NULL DEFAULT '' COMMENT '版本',
 persistence TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否持久化，针对redis。否：0，是：1',
 role TINYINT(1) NOT NULL DEFAULT 0 COMMENT '角色。master:1, slave:2, sentinel:3',
-status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '状态。online: 1, offline: 2',
+status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '状态。online: 1, offline: 0',
 remark VARCHAR(200) NOT NULL DEFAULT '' COMMENT '备注',
 updatetime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 KEY idx_id(gid, hid)
@@ -354,14 +428,13 @@ id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 gid INT NOT NULL DEFAULT 0 COMMENT '组id',
 hid INT NOT NULL DEFAULT 0 COMMENT 'host_id',
 port SMALLINT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'port号',
-ip VARCHAR(256) NOT NULL DEFAULT '' COMMENT 'port对应的ip',
 memory VARCHAR(20) NOT NULL DEFAULT '' COMMENT '分配内存',
 version VARCHAR(10) NOT NULL DEFAULT '' COMMENT '版本',
 thread INT NOT NULL DEFAULT 0 COMMENT '进程数',
 maxconn INT NOT NULL DEFAULT 0 COMMENT '最大连接数',
 user VARCHAR(20) NOT NULL DEFAULT 'memcached' COMMENT '运行用户名',
 parameters VARCHAR(100) NOT NULL DEFAULT '' COMMENT '命令启动的其他参数, 如-o slab_automove 等',
-status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '状态。online: 1, offline: 2',
+status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '状态。online: 1, offline: 0',
 remark VARCHAR(200) NOT NULL DEFAULT '' COMMENT '备注',
 updatetime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 KEY idx_id(gid, hid)
@@ -379,15 +452,17 @@ KEY idx_id(gid, hid)
 ```shell
 CREATE TABLE t_monitor_chart (
 id INT NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '图表ID',
-chart_name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '图表名称',
+template_name_id INT NOT NULL DEFAULT 0 COMMENT 't_monitor_template_name的id',
+name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '图表名称',
+description VARCHAR(500) NOT NULL DEFAULT '' COMMENT '图表描述',
 gid INT NOT NULL DEFAULT 0 COMMENT 'group id',
 hid INT NOT NULL DEFAULT 0 COMMENT '二级id，类似host id，业务id等',
 iid INT NOT NULL DEFAULT 0 COMMENT '三级id，类似各instance表id',
 creator INT NOT NULL DEFAULT 0 COMMENT '建表用户id',
 receiver VARCHAR(200) NOT NULL DEFAULT '' COMMENT '接警人id，以空格做分隔',
-alarm_status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否开启报警。开启：1，关闭：0',
 create_time timestamp NOT NULL DEfAULT '0000-00-00 00:00:00' COMMENT '建图日期',
 updatetime timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+key idx_tid (template_name_id),
 key idx_gid_iid (gid, iid),
 key idx_hid (hid),
 )ENGINE=INNODB DEFAULT CHARSET=utf8 COMMENT '监控图表信息'
@@ -403,12 +478,32 @@ key idx_hid (hid),
 CREATE TABLE t_monitor_ds (
 id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '数据源名称',
+description VARCHAR(500) NOT NULL DEFAULT '' COMMENT '数据源描述',
 chart_id INT NOT NULL DEFAULT 0 COMMETN 't_monitor_chart的id',
-monitor_template_id INT NOT NULL DEFAULT 0 COMMENT 't_monitor_template的id',
 updatetime timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 INDEX idx_cid (chart_id),
-INDEX idx_mtid (monitor_template_id)
 )ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT '监控数据源定义表';
+```
+
+- 报警规则表
+```shell
+CREATE TABLE t_monitor_alarm (
+id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+template_name_id INT NOT NULL DEFAULT 0 COMMENT 't_monitor_template_name的id',
+ds_id INT NOT NULL DEFAULT 0 COMMENT 't_monitor_ds的id',
+begin_time timestamp NOT NULL COMMENT '报警起始时间',
+end_time timestamp NOT NULL COMMENT '报警终止时间',
+mode SMALLINT not null default 0 '报警模式, 上限：1, 下限：2，范围：3，斜率：4',
+warn_lower INT NOT NULL DEFAULT 0 COMMENT '下限警告值',
+warn_upper INT NOT NULL DEFAULT 0 COMMENT '上限警告值',
+disaster_lower INT NOT NULL DEFAULT 0 COMMENT '下限灾难值',
+disaster_upper INT NOT NULL DEFAULT 0 COMMENT '上限灾难值',
+last INT NOT NULL DEFAULT 0 COMMENT '持续时间',
+interval INT NOT NULL DEFAULT 0 COMMENT '报警间隔',
+updatetime timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+INDEX idx_tid (template_name_id),
+INDEX idx_dsid (ds_id)
+)ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT '监控模板名表';
 ```
 
 - 监控模板名表
@@ -428,24 +523,28 @@ name VARCHAR(100) NOT NULL DEFAULT '' COMMENT '数据源模板表'
 ```shell
 CREATE TABLE t_monitor_template (
 id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-name VARCHART(50) NOT NULL DEFAULT '' COMMENT '数据源模板名',
-type SMALLINT NOT NULL DEFAULT 0 COMMMONT '监控对象的类型。0：None，1：组，2：主机，3：mysql实例，4：redis实例，5：mc实例',
-ds_name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '数据源名称',
-ds_description VARCHAR(200) NOT NULL DEFAULT '' COMMENT '数据源说明',
+template_name_id VARCHART(50) NOT NULL DEFAULT '' COMMENT '数据源模板名',
 chart_name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '图表名称',
 chart_description VARCHAR(200) NOT NULL DEFAULT '' COMMENT '图表说明',
-alarm_status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '该ds是否开启报警',
-alarm_condition VARCHAR(1000) NOT NULL DEFAULT '' COMMENT '报警设置。Json字符串。',
+ds_name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '数据源名称',
+ds_description VARCHAR(200) NOT NULL DEFAULT '' COMMENT '数据源说明',
+status TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否开启报警',
+begin_time timestamp NOT NULL COMMENT '报警起始时间',
+end_time timestamp NOT NULL COMMENT '报警终止时间',
+mode SMALLINT not null default 0 '报警模式, 上限：1, 下限：2，范围：3，斜率：4',
+warn_lower INT NOT NULL DEFAULT 0 COMMENT '下限警告值',
+warn_upper INT NOT NULL DEFAULT 0 COMMENT '上限警告值',
+disaster_lower INT NOT NULL DEFAULT 0 COMMENT '下限灾难值',
+disaster_upper INT NOT NULL DEFAULT 0 COMMENT '上限灾难值',
+last INT NOT NULL DEFAULT 0 COMMENT '持续时间',
+interval INT NOT NULL DEFAULT 0 COMMENT '报警间隔',
 updatetime timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-INDEX idx_name (name)
+INDEX idx_template (template_name_id, chart_name, ds_name)
 )ENGINE=INNODB DEFAULT CHARSET=UTF8 COMMENT '数据源模板表';
 ```
 
 type定义监控对象的类型，如该模板的应用对象是组类型。该字段主要用于模板分类，当与监控对象关联时，初始化该值。
-`alarm_condition`是发送报警的条件，条件可以有多个，格式为'[{"time": "00:00-23:59", "mode": "1", "level": "warning",
- "threshold": 2000, "interval": 5, "last": 5}, {"time": "09:00-18:00", "mode": "3", "level": "disaster",
- "threshold": "30-40", "interval": 60, "last": 5}]'，time即报警时间段。mode即报警模式，分为上限模式，下限模式，范围模式，斜率模式，
- 代表码为1，2，3，4。level是报警级别，分为'disaster'，'warning'。threshold为报警阈值，若为范围模式，则值为“下限-上限”。interval是报警
+mode即报警模式，分为上限模式，下限模式，范围模式，斜率模式， 代表码为1，2，3，4。interval是报警
  间隔。last即超出该报警阈值多久后即发出报警。
  
 监控模板的定义应该如下：
@@ -650,7 +749,9 @@ REST设计中URI为一系列的资源，其通过HTTP方法来表示CRUD（对�
 在monitor模块下，新建一个组，使用POST方法，对应的RESTful URI为 `http://dba.corp.anjuke.com/monitor/groups`。这里需要注意group使用复数。
 
 - READ
-查找monitor中组号为G1，host=db10-001的主机信息，使用GET方法，RESTful URI为 `http://dba.corp.anjuke.com/monitor/mysql/groups/g1/hosts/db10-001`。而对于可选参数的URI，使用key-value的形式传入参数，如`http://dba.corp.anjuke.com/monitor?group=g1&contacts=mingma`。关于 REST API 和 Query String Parameter 的选择，可参考[REST API Best practices: Where to put parameters?](http://stackoverflow.com/questions/4024271/rest-api-best-practices-where-to-put-parameters)。
+查找monitor中组号为G1，host=db10-001的主机信息，使用GET方法，RESTful URI为 `http://dba.corp.anjuke.com/monitor/mysql/groups/g1/hosts/db10-001`。
+而对于可选参数的URI，使用key-value的形式传入参数，如`http://dba.corp.anjuke.com/monitor?group=g1&contacts=mingma`。
+关于 REST API 和 Query String Parameter 的选择，可参考[REST API Best practices: Where to put parameters?](http://stackoverflow.com/questions/4024271/rest-api-best-practices-where-to-put-parameters)。
 
 - UPDATE
 更新monitor中组号为G1，host=db10-001的主机信息，使用PUT方法，RESTful URI为 `http://dba.corp.anjuke.com/monitor/mysql/groups/g1/hosts/db10-001`。
