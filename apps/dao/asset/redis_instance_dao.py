@@ -27,15 +27,15 @@ class RedisInstanceDAO(GenericDAO):
         pass
 
     @classmethod
-    def find_redis_instance_by_name_and_ip_and_port(cls, gid, hid, ip, port):
+    def find_redis_instance_by_name_and_port(cls, gid, hid, port):
         return RedisInstance.query.filter(RedisInstance.gid == gid,
-                                          or_(RedisInstance.hid == hid, RedisInstance.ip == ip),
+                                          RedisInstance.hid == hid,
                                           RedisInstance.port == port).all()
     
     @classmethod
     def get_all_redis_instance_info(cls):
         ri = aliased(RedisInstance)
         return RedisInstance.query.filter(ri.gid == Group.id, ri.hid == Host.id).\
-            with_entities(ri.id, ri.gid, Group.name, ri.hid, Host.host, ri.ip,
+            with_entities(ri.id, ri.gid, Group.name, ri.hid, Host.host,
                           ri.port, ri.memory, ri.persistence, ri.version, ri.role,
                           ri.status, ri.remark).order_by(ri.gid).all()

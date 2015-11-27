@@ -8,6 +8,9 @@ from apps.dao.asset.mc_instance_dao import McInstanceDAO
 from apps.dao.asset.redis_instance_dao import RedisInstanceDAO
 from apps.dao.monitor.monitor_template_dao import MonitorTemplateDAO
 from apps.dao.monitor.monitor_template_name_dao import MonitorTemplateNameDao
+from apps.dao.monitor.chart_dao import ChartDao
+from apps.dao.monitor.ds_dao import DsDao
+from apps.dao.monitor.monitor_alarm_dao import MonitorAlarmDao
 
 
 class GenericDAOFactory(object):
@@ -81,3 +84,24 @@ class MonitorTemplateNameDAOFactory(GenericDAOFactory):
     @classmethod
     def new(cls):
         return MonitorTemplateNameDao()
+
+
+class ChartDAOFactory(GenericDAOFactory):
+
+    @classmethod
+    def new(cls):
+        return ChartDao()
+
+
+class DsDAOFactory(GenericDAOFactory):
+
+    @classmethod
+    def new(cls):
+        return DsDao()
+
+
+class MonitorAlarmDAOFactory(GenericDAOFactory):
+
+    @classmethod
+    def new(cls):
+        return MonitorAlarmDao()

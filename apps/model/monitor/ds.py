@@ -7,14 +7,15 @@ class Ds(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), nullable=False, default='', doc='数据源名称')
+    description = db.Column(db.String(500), nullable=False, default='', doc='数据源描述')
     chart_id = db.Column(db.Integer, nullable=False, default=0, doc='t_monitor_chart的id')
-    monitor_template_id = db.Column(db.Integer, nullable=False, default=0, doc='t_monitor_template的id')
     updatetime = db.Column(db.TIMESTAMP, nullable=False, server_default=db.FetchedValue(),
                            server_onupdate=db.FetchedValue())
 
-    def __init__(self, name, cid):
+    def __init__(self, name='', desc='', cid=0):
         self.name = name
-        self.cid = cid
+        self.description = desc
+        self.chart_id = cid
 
     def __repr__(self):
         return "<Ds(id={}, name={}, chart_id={})>".format(self.id, self.name, self.chart_id)

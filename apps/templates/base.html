@@ -80,8 +80,11 @@
                     <span>监控</span>
                 </a>
                 <div class="menu">
-                  <div class="item">MySQL
+                  <div class="item"><a href="/monitor/m/"><span>MySQL</span></a>
                     <div class="menu">
+                        <a class="item" href="/monitor/m/group/">Group</a>
+                        <a class="item" href="/monitor/m/host/">Host</a>
+                        <a class="item" href="/monitor/m/instance/">Instance</a>
                     </div>
                   </div>
                   <div class="item">Redis
@@ -136,11 +139,11 @@
     </div>
 </div>
 
-<footer>
-    <div class="bottom-text left-width">
-        <big>Omega&nbsp;&nbsp;&copy;DB</big>
-    </div>
-</footer>
+<!--<footer>-->
+    <!--<div class="bottom-text left-width">-->
+        <!--<big>Omega&nbsp;&nbsp;&copy;DB</big>-->
+    <!--</div>-->
+<!--</footer>-->
 <script src="{{ url_for('static', filename='js/search.js') }}"></script>
 {% block scripts %}
 {% endblock %}

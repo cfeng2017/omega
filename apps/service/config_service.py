@@ -74,3 +74,8 @@ class ConfigService(GenericService):
         tn = ({'type': m_flag, 'names': _})
         type_list.append(tn)
         return type_list
+
+    @classmethod
+    def get_all_monitor_template_type(cls):
+        dao = MonitorTemplateNameDAOFactory().new()
+        return dao.get_all_monitor_template_type()

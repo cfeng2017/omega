@@ -1,7 +1,11 @@
+from sqlalchemy import or_
+from sqlalchemy.orm import aliased
+
 from apps import db
 from apps.dao.generic_dao import GenericDAO
 from apps.model.asset.host import Host
-from sqlalchemy import or_
+from apps.model.monitor.chart import Chart
+from apps.model.monitor.monitor_template_name import MonitorTemplateName
 
 
 class HostDAO(GenericDAO):
@@ -34,3 +38,4 @@ class HostDAO(GenericDAO):
     @classmethod
     def get_hid_by_name(cls, name):
         return Host.query.with_entities(Host.id).filter(Host.host == name).first()
+

@@ -4,6 +4,11 @@ $(function() {
     $('.ui.dropdown').dropdown();
     $('.ui.checkbox').checkbox();
 
+
+    $('#template_name_id').change(function() {
+        var name = $('#template_name_id option:selected').text()
+        $('#template_name').val(name);
+    });
 //    $('.add_ds').on('click', function() {
 //        var tr_num = $('#ds_table tbody tr').length;             //已有数据源行总数
 //
@@ -114,7 +119,7 @@ $(function() {
                 var r2 = ',&emsp;灾难&nbsp;';
                 var r3 = '&nbsp;~&nbsp;';
 
-                rule += $('#modal_ds').val();
+                rule += $('#modal_ds').val() + ": ";
 
                 var warn_lower = $('#warn_lower').val();
                 if(!warn_lower) {

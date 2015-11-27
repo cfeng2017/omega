@@ -21,12 +21,14 @@
         {{render_table_field(form.h_disk_type)}}
         {{render_table_field(form.h_disk_num, placeholder="请填写整数")}}
         {{render_table_field(form.h_disk_size, placeholder="请填写整数，单位:G")}}
+        {{render_table_field(form.h_raid, placeholder="请填写整数，单位:G")}}
         </tbody>
         <tbody class="multi_field_wrapper">
         {{render_table_field(form.h_eth)}}
         {{render_table_field(form.h_ip)}}
         </tbody>
         <tbody class="block_wrapper">
+        {{render_table_field(form.h_vip)}}
         {{render_table_field(form.h_remote_ip)}}
         {{render_table_field(form.h_idc)}}
         {{render_table_field(form.h_rack)}}

@@ -1,0 +1,40 @@
+{% extends "monitor/base.html" %}
+
+{% block mbc %}
+    <a class="section" href="/monitor/">监控</a>
+    <div class="divider">/</div>
+    <a class="active section" href="/monitor/m/">MySQL</a>
+{% endblock %}
+
+{% block submain %}
+Host: {{hid}}
+
+<table class="ui celled structured table">
+    <thead>
+        <tr>
+            <th>Chart ID</th>
+            <th>Chart name</th>
+            <th>Chart Description</th>
+            <th>Datasource ID</th>
+            <th>Datasource name</th>
+            <th>Datasource Description</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for info in infos %}
+        {% for d in info.ds_list %}
+        <tr>
+            {% if loop.index== 1 %}
+            <td rowspan="{{info.ds_list|length}}">{{info.chart_id}}</td>
+            <td rowspan="{{info.ds_list|length}}">{{info.chart_name}}</td>
+            <td rowspan="{{info.ds_list|length}}">{{info.chart_desc}}</td>
+            {% endif %}
+            <td>{{d.ds_id}}</td>
+            <td>{{d.ds_name}}</td>
+            <td>{{d.ds_desc}}</td>
+        </tr>
+        {% endfor %}
+    {% endfor %}
+    </tbody>
+    </table>
+{% endblock %}

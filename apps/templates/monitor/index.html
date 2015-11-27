@@ -1,16 +1,14 @@
-{% extends "base.html" %}
+{% extends "monitor/base.html" %}
 
 {% block sfiles %}
 
 {% endblock %}
 
-{% block breadcrumb %}
-    <a class="section" href="/">Omega</a>
-    <div class="divider">/</div>
-    <a class="active section" href="/monitor">Monitor</a>
+{% block mbc %}
+    <a class="active section" href="/monitor/">监控</a>
 {% endblock %}
 
-{% block maincontent %}
+{% block submain %}
 <div class="overview">
 <a class="ui green button" href="/monitor/add_host_monitor/">添加主机监控</a>
 </div>

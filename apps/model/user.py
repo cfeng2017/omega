@@ -46,5 +46,4 @@ class User(db.Model, UserMixin):
     def __repr__(self):
         return '<User {}>'.format(self.name)
 
-db.Index('idx_uid', User.uid, unique=True)
 

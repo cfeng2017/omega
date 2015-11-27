@@ -1,3 +1,4 @@
+# -*- coding: utf8 -*-
 from sqlalchemy.orm import aliased
 
 from apps import db
@@ -23,30 +24,25 @@ class MonitorTemplateDAO(GenericDAO):
         pass
 
     @classmethod
-    def is_exist(cls, o):
-        return MonitorTemplate.query.filter(MonitorTemplate.name == o.name).first()
+    # def is_exist(cls, o):
+    #     return MonitorTemplate.query.filter(MonitorTemplate.name == o.name).first()
 
     @classmethod
     def get_all_template_name(cls):
-        return MonitorTemplate.query.with_entities(MonitorTemplate.template_id == MonitorTemplateName.id).\
+        return MonitorTemplate.query.with_entities(MonitorTemplate.template_name_id == MonitorTemplateName.id).\
             distinct().all()
 
     @classmethod
     def get_monitor_template_info(cls, o):
         m = aliased(MonitorTemplate)
-        return MonitorTemplate.query.filter(m.template_id == o.template_id).\
+        return MonitorTemplate.query.filter(m.template_name_id == o.template_name_id).\
             with_entities(m.id, m.chart_name, m.chart_description, m.ds_name, m.ds_description).\
             order_by(m.chart_name).all()
 
-    # @classmethod
-    # def get_monitor_template_info_by_name(cls, name):
-    #     mt = aliased(MonitorTemplate)
-    #     return MonitorTemplate.query.filter(mt.name == name).filter(mt.chart_name != '').\
-    #         with_entities(mt.id, mt.ds_name, mt.ds_description, mt.chart_name, mt.chart_description).\
-    #         order_by(mt.ds_name).all()
-
-    # @classmethod
-    # def get_monitor_template_type_and_name(cls):
-    #     return MonitorTemplate.query.with_entities(MonitorTemplateName.name).\
-    #         filter(MonitorTemplate.template_id == MonitorTemplateName.id).\
-    #         group_by(MonitorTemplate.template_id).all()
+    """
+    通过template_id获取monitor_template表的所有信息。
+    返回值: [(<MonitorTemplate(id, template_name_id, ds_name, ds_description, chart_name, chart_description, status, ...)>)]
+    """
+    @classmethod
+    def get_charts_by_template_id(cls, tid):
+        return MonitorTemplate.query.filter(MonitorTemplate.template_name_id == tid).all()

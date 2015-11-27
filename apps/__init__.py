@@ -23,6 +23,7 @@ lm.init_app(app)
 lm.login_view = 'login'
 lm.login_message = u'Please login!'
 
+
 # oauth
 OAUTH_URL = 'https://auth.corp.anjuke.com/oauth/2.0'
 CLIENT_ID = 'r80080org0ikzra3b91d'

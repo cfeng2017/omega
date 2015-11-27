@@ -10,10 +10,11 @@ class Host(db.Model):
     core = db.Column(db.Integer, nullable=False, default='0', doc='cpu核数')
     memory = db.Column(db.Integer, nullable=False, default='0', doc='内存大小，以G为单位')
     disk = db.Column(db.String(200), nullable=False, default='0',
-                     doc='磁盘信息，JSON字符串，内容为(磁盘类型，个数，每类磁盘大小)形式，磁盘类型：SAS: 0,SSD: 1,SATA: 2')
+            doc='磁盘信息，JSON字符串，内容为(磁盘类型，个数，每类磁盘大小, raid)形式，磁盘类型：SAS: 0,SSD: 1,SATA: 2,raid:1')
     eth = db.Column(db.String(10), nullable=False, default='', doc='主要网卡设备名')
     ip = db.Column(db.String(15), nullable=False, default='', doc='主要网卡IP')
     oips = db.Column(db.String(192), nullable=False, default='', doc='其他网卡信息，json字符串，内容为(设备名，ip)形式')
+    vip = db.Column(db.String(192), nullable=False, default='', doc='虚拟IP')
     remote_ip = db.Column(db.String(32), nullable=False, default='', doc='远程控制卡ip')
     idc = db.Column(db.SmallInteger, nullable=False, default='0', doc='idc机房，天津机房：0，IDC10：1, 为IDC20：2')
     rack = db.Column(db.String(10), nullable=False, default='', doc='机架位置')
@@ -25,7 +26,7 @@ class Host(db.Model):
     updatetime = db.Column(db.TIMESTAMP, nullable=False, server_default=db.FetchedValue(),
                            server_onupdate=db.FetchedValue())
 
-    def __init__(self, host='', core=0, memory=0, disk='', eth='', ip='', oips='', rip='', idc=0, rack=0,
+    def __init__(self, host='', core=0, memory=0, disk='', eth='', ip='', oips='', vip='', rip='', idc=0, rack=0,
                  brf=0, brd='', status=0, remark=''):
         self.host = host
         self.cores = core
@@ -34,6 +35,7 @@ class Host(db.Model):
         self.eth = eth
         self.ip = ip
         self.oips = oips
+        self.vip = vip
         self.remote_ip = rip
         self.idc = idc
         self.rack = rack

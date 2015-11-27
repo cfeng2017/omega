@@ -19,9 +19,10 @@ $(function(){
         $('#group_list tbody').empty();
         $.getJSON('/asset/g/get_group_by_type/', {'tid': tid}, function(data) {
             $.each(data.groups, function(inx, group) {
-                $('#group_list tbody').append('<tr><td>' + group.name +
-                    '</td><td>' + group.description +
-                    '</td></tr>')
+                $('#group_list tbody').append('<tr>' +
+                                        '<td>' + group.name + '</td>' +
+                                        '<td>' + group.description + '</td>' +
+                                        '<td>' + group.contacts + '</td></tr>');
             });
         });
     });

@@ -1,10 +1,12 @@
 import requests
+from functools import wraps
 requests.packages.urllib3.disable_warnings()
 
-from flask import redirect, request, g, url_for, Blueprint
+from flask import redirect, request, g, url_for, Blueprint, render_template
 from apps import OAUTH_URL, CLIENT_ID, CLIENT_SECRET, app, lm, db
 from apps.model.user import User
 from flask_login import current_user, logout_user, login_user, login_required
+from apps.view.error_pages import forbidden
 
 user = Blueprint('user', __name__)
 
@@ -61,3 +63,22 @@ def login():
 def logout():
     logout_user()
     return redirect(url_for('dashboard'))
+
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if g.user.get_id() is None:
+            # return redirect(url_for('forbidden'))
+            return render_template('error_pages/403.html'), 403
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+@app.errorhandler(403)
+def forbidden():
+    return render_template('error_pages/403.html'), 403
+# @lm.unauthorized_handler
+# def unauthorized():
+#     print '~~~~~~~~~~~~~'
+#     return redirect(url_for('forbidden'))

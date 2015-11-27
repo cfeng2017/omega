@@ -1,4 +1,4 @@
-from sqlalchemy import or_
+from sqlalchemy import or_, distinct
 
 from apps import db
 from apps.dao.generic_dao import GenericDAO
@@ -28,3 +28,8 @@ class MonitorTemplateNameDao(GenericDAO):
     @classmethod
     def get_all_template_name_by_type(cls, o):
         return MonitorTemplateName.query.filter(MonitorTemplateName.monitor_type == o.monitor_type).all()
+
+    @classmethod
+    def get_all_monitor_template_type(cls):
+        return MonitorTemplateName.query.with_entities(distinct(MonitorTemplateName.monitor_type)).all()
+

@@ -206,11 +206,11 @@ Omega Preliminary Design
                                chart_id                 v           ds_id
        t_monitor_chart <-------------------------- t_monitor_ds <------------ t_monitor_alarm 
             |                                           |
-            | t_template_name_id                        | 
+            | template_name_id                          | template_id
             |                                           |  
             v                                           v 
  t_monitor_template_name <----------------------- t_monitor_template          
-                             t_template_name_id
+                               template_name_id
 ```
 
 ##### 自定义监控说明
@@ -489,7 +489,7 @@ INDEX idx_cid (chart_id),
 ```shell
 CREATE TABLE t_monitor_alarm (
 id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-template_name_id INT NOT NULL DEFAULT 0 COMMENT 't_monitor_template_name的id',
+template_id INT NOT NULL DEFAULT 0 COMMENT 't_monitor_template的id',
 ds_id INT NOT NULL DEFAULT 0 COMMENT 't_monitor_ds的id',
 begin_time timestamp NOT NULL COMMENT '报警起始时间',
 end_time timestamp NOT NULL COMMENT '报警终止时间',

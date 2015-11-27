@@ -5,7 +5,7 @@
 {% endblock %}
 
 {% block form %}
-<form action="/config/t/add_monitor_template/" class="ui form" id="tform" method="post">
+<form action="/config/t/add_monitor_template/?type={{monitor_type}}" class="ui form" id="tform" method="post">
 
     <h4 class="ui dividing header">添加监控模板</h4>
 
@@ -13,7 +13,7 @@
         <label class="form-label">模板名:</label>
         <div class="form-content">
             <div class="content-line">
-                <select id="template_name" name="template_name">
+                <select id="template_name_id" name="template_name_id">
                 {% for mt in mt_list %}
                     <option value="{{ mt[0] }}">{{ mt[1] }}</option>
                 {% endfor %}
@@ -21,6 +21,7 @@
                 <div>
                     <a class="add_template content-line-btn">新建</a>
                 </div>
+                <input type="hidden" name="template_name" id="template_name" value="{{mt_list[0][1]}}">
             </div>
         </div>
 
@@ -71,7 +72,7 @@
     <div class="content">
         <form action="/config/t/add_ds_template_name/?type={{monitor_type}}" class="ui form" id="tnform" method="post">
             <div style="overflow: auto;">
-                <label for="template_name">模板名: </label>
+                <label for="new_template_name">模板名: </label>
                 <div class="input_right"><input type="text" id="new_template_name" name="new_template_name"></div>
             </div>
             <p>已有数据源模板<p/>
@@ -111,7 +112,6 @@
                 </div>
             </div>
         </form>
-
     </div>
     <div class="actions">
         <div class="ui cancel button">取消</div>

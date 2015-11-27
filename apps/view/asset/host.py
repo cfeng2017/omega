@@ -42,8 +42,10 @@ def add_host():
         dtype = form.h_disk_type.data
         dnum = form.h_disk_num.data
         dsize = form.h_disk_size.data
+        raid = form.h_raid.data
         eth = form.h_eth.data
         ip = form.h_ip.data
+        vip = form.h_vip.data
         remote_ip = form.h_remote_ip.data
         idc = form.h_idc.data
         rack = form.h_rack.data
@@ -54,11 +56,11 @@ def add_host():
 
         if not brt:
             brt = '1000-01-01 00:00:00'
-        disk = json.dumps(((dtype, dnum, dsize),))
+        disk = json.dumps(((dtype, dnum, dsize, raid),))
         if name != '' and ip != '':
             is_exist = aservice.find_host_by_name_and_ip(name, ip)
             if not is_exist:
-                host = Host(name, core, mem, disk, eth, ip, '', remote_ip, idc, rack, brf, brt, status, remark)
+                host = Host(name, core, mem, disk, eth, ip, '', vip, remote_ip, idc, rack, brf, brt, status, remark)
                 aservice.add(host)
                 flash(u"Add Success!", 'info')
                 return redirect(url_for('.hosts'))

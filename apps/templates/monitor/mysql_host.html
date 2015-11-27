@@ -1,0 +1,100 @@
+{% extends "monitor/base.html" %}
+
+{% block mbc %}
+    <a class="section" href="/monitor/">监控</a>
+    <div class="divider">/</div>
+    <a class="active section" href="/monitor/m/">MySQL</a>
+{% endblock %}
+
+{% block submain %}
+
+在线机器:
+    <table class="ui column table segment">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th style="width: 20%">Hostname</th>
+                <th style="width: 40%">已关联模板</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for host in online_hosts %}
+            <tr>
+                <!--info[0](hid)用于初始化图表-->
+                <td><a href="/monitor/m/host/{{host.id}}">{{ host.id }}</a></td>
+                <td>{{ host.name }}</td>
+                <td>
+                    {% for tn in host.tnames %}
+                    {{tn}}&emsp;
+                    {% endfor %}
+                </td>
+                <td><button class="relate_template">关联模板</button></td>
+        {% endfor %}
+        </tbody>
+    </table>
+
+非在线机器：
+    <table class="ui column table segment">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th style="width: 20%">Hostname</th>
+                <th style="width: 40%">已关联模板</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for host in offline_hosts %}
+            <tr>
+                <td>{{ host.id }}</td>
+                <td>{{ host.name }}</td>
+                <td>
+                    {% for tn in host.tnames %}
+                    {{tn}}&emsp;
+                    {% endfor %}
+                </td>
+                <td><button class="relate_template">关联模板</button></td>
+        {% endfor %}
+        </tbody>
+    </table>
+
+<div class="ui modal" id="host_templates">
+    <i class="close icon"></i>
+    <div class="header">新建数据源</div>
+    <div class="content">
+        <form class="ui form" action="/monitor/m/mysql_host_relate_to_template/" id="tform">
+            <div class="form-line">
+                <label class="form-label">模板类型:</label>
+                <div class="form-content">
+                    <div class="content-line">
+                        <select name="template_type" id="template_type">
+                            <option>选择</option>
+                            {% for t in template_types %}
+                            <option>{{t}}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-line">
+                <label class="form-label">模板名:</label>
+                <div class="form-content">
+                    <div class="content-line">
+                        <select name="template_name_id" id="template_name_id">
+                            <option>选择</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <input type="hidden" id="hid" name="hid">
+        </form>
+    </div>
+    <div class="actions">
+        <div class="ui cancel button">取消</div>
+        <div class="ui green approve button" id="sumit_template">提交</div>
+    </div>
+</div>
+{% endblock %}

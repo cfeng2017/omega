@@ -16,14 +16,16 @@ def templates():
 
 @config.route('/t/add_monitor_template/', methods=['GET', 'POST'])
 def add_monitor_template():
-    monitor_type = request.args.get('type')
     cs = ConfigService()
+    monitor_type = request.args.get('type')
+    if not monitor_type:
+        monitor_type = cs.get_all_monitor_template_type()[0]['monitor_type']
     monitor_template_list = [(mt.id, mt.name)
                              for mt in cs.get_all_template_name_by_type(MonitorTemplateName(monitor_type))
                              if mt]
-    # monitor_template_list = [mt[0] for mt in cs.get_all_template_name(MonitorTemplate()) if mt]
     if request.method == 'POST':
-        template_id = request.form.get('template_name')
+        template_name_id = request.form.get('template_name_id')
+        template_name = request.form.get('template_name')
         chart_name = request.form.get('chart_name')
         chart_desc = request.form.get('chart_desc')
         ds_name_list = request.form.getlist('ds_name')
@@ -38,31 +40,34 @@ def add_monitor_template():
         interval_time_list = request.form.getlist('interval_time')
         begin_time_list = request.form.getlist('begin_time')
         end_time_list = request.form.getlist('end_time')
-
         mts = []
         for index in range(len(ds_name_list)):
             dn, dd = ds_name_list[index], ds_desc_list[index]
-            rules = []
-            for ind in range(len(alarm_ds_list)):
-                rule = {}
-                if mode_list[ind] == '3':
-                    rule['warn_upper'] = warn_upper_list[ind]
-                    rule['dis_upper'] = dis_upper_list[ind]
-                if alarm_ds_list[ind] == dn:
-                    rule['mode'] = mode_list[ind]
-                    rule['warn_lower'] = warn_lower_list[ind]
-                    rule['dis_lower'] = dis_lower_list[ind]
-                    rule['last'] = last_time_list[ind]
-                    rule['interval'] = interval_time_list[ind]
-                    rule['begin_time'] = begin_time_list[ind]
-                    rule['end_time'] = end_time_list[ind]
-                    rules.append(rule)
-            mts.append(MonitorTemplate(template_id, chart_name, chart_desc, dn, dd, str(rules)))
+            _ = []
+            if mode_list:
+                for ind in range(len(alarm_ds_list)):
+                    if alarm_ds_list[ind] == dn:
+                        _ = MonitorTemplate(template_name_id, chart_name, chart_desc, dn, dd, 1,
+                                            mode_list[ind],
+                                            warn_lower_list[ind],
+                                            warn_upper_list[ind] if warn_upper_list[ind] else 0,
+                                            dis_lower_list[ind],
+                                            dis_upper_list[ind] if dis_upper_list[ind] else 0,
+                                            last_time_list[ind],
+                                            interval_time_list[ind],
+                                            begin_time_list[ind],
+                                            end_time_list[ind]
+                                            )
+                        mts.append(_)
+            else:                              # 若没有报警规则
+
+                mts.append(MonitorTemplate(template_name_id, chart_name, chart_desc, dn, dd))
         if mts:
             cs.addmany(mts)
             flash('添加成功', 'info')
+            return redirect(url_for('.show_monitor_template_info', tid=template_name_id, name=template_name))
         else:
-            flash('添加失败', 'warning')
+            flash('添加失败，请添加数据源！', 'warning')
     return render_template('config/add_monitor_template.html', mt_list=monitor_template_list, monitor_type=monitor_type)
 
 
@@ -78,7 +83,7 @@ def add_ds_template_name():
         else:
             cs.add(mtn)
             flash('添加成功！', 'info')
-    return redirect(url_for('.add_monitor_template',  type= monitor_type))
+    return redirect(url_for('.add_monitor_template',  type=monitor_type))
 
 
 @config.route('/t/monitor_template_info/', methods=['GET'])

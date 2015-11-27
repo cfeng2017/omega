@@ -1,0 +1,55 @@
+{% extends "monitor/base.html" %}
+
+{% block mbc %}
+    <a class="section" href="/monitor/">监控</a>
+    <div class="divider">/</div>
+    <a class="active section" href="/monitor/m/">MySQL</a>
+{% endblock %}
+
+{% block submain %}
+    <div class="grouplist">
+        {% for info in infos %}
+        <div class="ui ribbon label groupname">{{ info.gname }}</div>
+        <table class="ui column table segment grouptable">
+            <thead>
+                <tr>
+                    <th style="width: 6%">Hostname</th>
+                    <th style="width: 7%">IP</th>
+                    <th style="width: 5%">Port</th>
+                    <th style="width: 7%">Role</th>
+                    <th style="width: 7%">CPU</th>
+                    <th style="width: 5%">Load</th>
+                    <th style="width: 5%">Memory</th>
+                    <th style="width: 5%">Util</th>
+                    <th style="width: 5%">Run</th>
+                    <th style="width: 5%">Sleep</th>
+                    <th style="width: 5%">Read</th>
+                    <th style="width: 5%">Write</th>
+                    <th style="width: 5%">Slow</th>
+                    <th style="width: 5%">Delay</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for i in info.ginfos %}
+                <tr>
+                    <td>{{i['host']}}</td>
+                    <td>{{i['ip']}}</td>
+                    <td>{{i['port']}}</td>
+                    <td>{{i['role']}}</td>
+                    <td>cpu</td>
+                    <td>load</td>
+                    <td>memory</td>
+                    <td>util</td>
+                    <td>run</td>
+                    <td>sleep</td>
+                    <td>read</td>
+                    <td>write</td>
+                    <td>slow</td>
+                    <td>delay</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endfor %}
+    </div>
+{% endblock %}

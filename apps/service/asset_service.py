@@ -109,19 +109,19 @@ class AssetService(GenericService):
         return dao.find_all_host_name_and_ip()
 
     @classmethod
-    def find_mysql_instance_by_name_and_ip_and_port(cls, gid, hid, ip, port):
+    def find_mysql_instance_by_name_and_port(cls, gid, hid, port):
         dao = MysqlInstanceDAOFactory.new()
-        return dao.find_mysql_instance_by_name_and_ip_and_port(gid, hid, ip, port)
+        return dao.find_mysql_instance_by_name_and_port(gid, hid, port)
 
     @classmethod
-    def find_mc_instance_by_name_and_ip_and_port(cls, gid, hid, ip, port):
+    def find_mc_instance_by_name_and_port(cls, gid, hid, port):
         dao = McInstanceDAOFactory.new()
-        return dao.find_mc_instance_by_name_and_ip_and_port(gid, hid, ip, port)
+        return dao.find_mc_instance_by_name_and_port(gid, hid, port)
 
     @classmethod
-    def find_redis_instance_by_name_and_ip_and_port(cls, gid, hid, ip, port):
+    def find_redis_instance_by_name_and_port(cls, gid, hid, port):
         dao = RedisInstanceDAOFactory().new()
-        return dao.find_redis_instance_by_name_and_ip_and_port(gid, hid, ip, port)
+        return dao.find_redis_instance_by_name_and_port(gid, hid, port)
 
     @classmethod
     def get_all_mysql_instance_info(cls):
